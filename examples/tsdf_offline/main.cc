@@ -99,7 +99,7 @@ class ImageRenderer : public RendererBase {
                 const std::string &logdir,
                 const YAML::Node &config)
      : RendererBase(name), logdir_(logdir),
-       tsdf_(0.04, 0.08),
+       tsdf_(0.01, 0.06),
        intrinsics_(get_intrinsics(config)),
        log_entries_(parse_log_entries(logdir, config)),
        depth_scale_(config["depthmap_factor"].as<float>()) {
