@@ -99,7 +99,7 @@ class ImageRenderer : public RendererBase {
                 const std::string &logdir,
                 const YAML::Node &config)
      : RendererBase(name), logdir_(logdir),
-       tsdf_(0.04, 0.08),
+       tsdf_(4./512, 0.04),
        intrinsics_(get_intrinsics(config)),
        log_entries_(parse_log_entries(logdir, config)),
        depth_scale_(config["depthmap_factor"].as<float>()) {
@@ -180,7 +180,7 @@ class ImageRenderer : public RendererBase {
       cv::cvtColor(img_rgb_, img_rgb_, cv::COLOR_BGR2RGB);
       const auto st = get_timestamp<std::chrono::milliseconds>();
       tsdf_.Integrate(img_rgb_, img_depth_, img_ht_, img_lt_,
-                      4, intrinsics_, log_entry.cam_P_world);
+                      5, intrinsics_, log_entry.cam_P_world);
       const auto end = get_timestamp<std::chrono::milliseconds>();
       CUDA_SAFE_CALL(cudaDeviceSynchronize());
       ImGui::Text("Integration takes %lu ms", end - st);
