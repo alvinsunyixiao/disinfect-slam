@@ -1,71 +1,56 @@
-#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <mutex>
-#include <opencv2/core.hpp>
-#include <opencv2/core/base.hpp>
-#include <opencv2/highgui.hpp>
 #include <string>
 #include <thread>
-#include <vector>
-#include <yaml-cpp/node/parse.h>
 #include <yaml-cpp/yaml.h>
 
 #include "pangolin_viewer/viewer.h"
 
 #include "openvslam/config.h"
+#include "openvslam/system.h"
 
+#include <librealsense2/rs.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <popl.hpp>
 #include <spdlog/spdlog.h>
 
-#include "cameras/l515.h"
-#include "cameras/zed_native.h"
+#include "cameras/sr300.h"
 #include "modules/slam_module.h"
 #include "utils/data_logger.hpp"
 #include "utils/time.hpp"
 
-class SemanticSLAMData {
+class DepthData {
  public:
-  SemanticSLAMData() = default;
+  DepthData() = default;
 
-  SemanticSLAMData(const SemanticSLAMData &others)
-    : zed_img_left(others.zed_img_left.clone()),
-      zed_img_right(others.zed_img_right.clone()),
-      l515_img_rgb(others.l515_img_rgb.clone()),
-      l515_img_depth(others.l515_img_depth.clone()),
+  DepthData(const DepthData &others)
+    : img_rgb(others.img_rgb.clone()),
+      img_depth(others.img_depth.clone()),
       id(others.id) {}
 
-  cv::Mat zed_img_left;
-  cv::Mat zed_img_right;
-  cv::Mat l515_img_rgb;
-  cv::Mat l515_img_depth;
+  cv::Mat img_rgb;
+  cv::Mat img_depth;
   unsigned int id;
 };
 
-class SemanticSLAMLogger : public DataLogger<SemanticSLAMData> {
+class DepthLogger : public DataLogger<DepthData> {
  public:
-  SemanticSLAMLogger(const std::string &logdir) 
+  DepthLogger(const std::string &logdir)
       : logdir_(logdir),
-        DataLogger<SemanticSLAMData>() {}
+        DataLogger<DepthData>() {}
 
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const SemanticSLAMData &data) override {
+  void save_data(const DepthData &data) override {
     const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
     const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
-    const std::string left_path = logdir_ + "/" + std::to_string(data.id) + "_left.png";
-    const std::string right_path = logdir_ + "/" + std::to_string(data.id) + "_right.png";
-    cv::Mat l515_depth_uint16;
-    data.l515_img_depth.convertTo(l515_depth_uint16, CV_16UC1);
-    // write!
-    cv::imwrite(rgb_path, data.l515_img_rgb);
-    cv::imwrite(depth_path, l515_depth_uint16);
-    cv::imwrite(left_path, data.zed_img_left);
-    cv::imwrite(right_path, data.zed_img_right);
+    cv::Mat img_depth_uint16;
+    data.img_depth.convertTo(img_depth_uint16, CV_16UC1);
+    cv::imwrite(rgb_path, data.img_rgb);
+    cv::imwrite(depth_path, img_depth_uint16);
     logged_ids.push_back(data.id);
   }
 
@@ -75,33 +60,38 @@ class SemanticSLAMLogger : public DataLogger<SemanticSLAMData> {
 
 void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &vocab_file_path,
+              const SR300 &camera,
               const std::string &map_db_path,
               const std::string &logdir,
-              const L515 &l515,
-              const ZEDNative &zed_native) {
-  slam_system SLAM(cfg, vocab_file_path);
+              bool use_depth = true) {
+  SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
   pangolin_viewer::viewer viewer(
       cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
 
-  SemanticSLAMLogger logger(logdir);
+  DepthLogger logger(logdir);
 
   std::thread t([&]() {
     const auto start = std::chrono::steady_clock::now();
-    SemanticSLAMData data;
+    DepthData data;
     while (true) {
       if (SLAM.terminate_is_requested())
         break;
 
-      zed_native.get_stereo_img(&data.zed_img_left, &data.zed_img_right);
-      l515.get_rgbd_frame(&data.l515_img_rgb, &data.l515_img_depth);
+      camera.get_rgbd_frame(&data.img_rgb, &data.img_depth);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
-      data.id = SLAM.feed_stereo_images(
-          data.zed_img_left, data.zed_img_right, timestamp / 1e6);
+      if (use_depth)
+        data.id = SLAM.feed_rgbd_images(data.img_rgb, data.img_depth, timestamp / 1e6);
+      else
+        SLAM.feed_monocular_frame(data.img_rgb, timestamp / 1e6);
 
       logger.log_data(data);
+    }
+
+    while (SLAM.loop_BA_is_running()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   });
 
@@ -116,16 +106,36 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
   SLAM.save_matched_trajectory(traj_path, logger.logged_ids);
 }
 
-std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
+std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path,
+                                                      SR300 *camera) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
-  const stereo_rectifier rectifier(yaml_node);
-  const cv::Mat rectified_intrinsics = rectifier.get_rectified_intrinsics();
-  yaml_node["Camera.fx"] = rectified_intrinsics.at<double>(0, 0);
-  yaml_node["Camera.fy"] = rectified_intrinsics.at<double>(1, 1);
-  yaml_node["Camera.cx"] = rectified_intrinsics.at<double>(0, 2);
-  yaml_node["Camera.cy"] = rectified_intrinsics.at<double>(1, 2);
-  yaml_node["Camera.focal_x_baseline"] = -rectified_intrinsics.at<double>(0, 3);
-  return std::make_shared<openvslam::config>(yaml_node);
+  // modify configuration based on realsense camera data
+  // pre-defined stream profile
+  yaml_node["Camera.fps"] = SR300::FPS;
+  yaml_node["Camera.cols"] = SR300::WIDTH;
+  yaml_node["Camera.rows"] = SR300::HEIGHT;
+  yaml_node["Camera.color_order"] = "RGB";
+  // camera intrinsics
+  rs2_intrinsics i = camera->get_camera_intrinsics();
+  yaml_node["Camera.fx"] = i.fx;
+  yaml_node["Camera.fy"] = i.fy;
+  yaml_node["Camera.cx"] = i.ppx;
+  yaml_node["Camera.cy"] = i.ppy;
+  // zero camera distortion
+  yaml_node["Camera.k1"] = 0;
+  yaml_node["Camera.k2"] = 0;
+  yaml_node["Camera.p1"] = 0;
+  yaml_node["Camera.p2"] = 0;
+  yaml_node["Camera.k3"] = 0;
+  // depth factor
+  yaml_node["depthmap_factor"] = camera->get_depth_scale();
+  // realsense depth camera options
+  camera->set_depth_sensor_option(RS2_OPTION_FILTER_OPTION,
+                                  yaml_node["RS.filter_option"].as<float>());
+  camera->set_depth_sensor_option(RS2_OPTION_MOTION_RANGE,
+                                  yaml_node["RS.motion_range"].as<float>());
+
+  return std::make_shared<openvslam::config>(yaml_node, config_file_path);
 }
 
 int main(int argc, char *argv[]) {
@@ -136,12 +146,11 @@ int main(int argc, char *argv[]) {
   auto config_file_path = op.add<popl::Value<std::string>>("c", "config",
                                                            "config file path");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
+  auto depth = op.add<popl::Switch>("", "depth", "use depth information");
   auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db",
                             "path to store the map database", "");
-  auto log_dir = op.add<popl::Value<std::string>>("", "logdir", 
+  auto log_dir = op.add<popl::Value<std::string>>("", "logdir",
                             "directory to store logged data", "./log");
-  auto device_id = op.add<popl::Value<int>>("", "devid", "camera device id", 0);
-
   try {
     op.parse(argc, argv);
   } catch (const std::exception &e) {
@@ -169,21 +178,18 @@ int main(int argc, char *argv[]) {
   else
     spdlog::set_level(spdlog::level::info);
 
-  YAML::Node yaml_node = YAML::LoadFile(config_file_path->value());
+  SR300 camera;
 
   std::shared_ptr<openvslam::config> cfg;
   try {
-    cfg = get_and_set_config(config_file_path->value());
+    cfg = get_and_set_config(config_file_path->value(), &camera);
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
   }
 
-  ZEDNative zed_native(*cfg, device_id->value());
-  L515 l515;
-
-  tracking(cfg, 
-      vocab_file_path->value(), map_db_path->value(), log_dir->value(), l515, zed_native);
+  tracking(cfg,
+      vocab_file_path->value(), camera, map_db_path->value(), log_dir->value(), depth->is_set());
 
   return EXIT_SUCCESS;
 }

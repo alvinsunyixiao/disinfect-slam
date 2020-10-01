@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.11)
 
 project(disinfslam LANGUAGES CXX C)
 include(CheckLanguage)
@@ -9,6 +9,7 @@ if (CMAKE_CUDA_COMPILER)
     set(CMAKE_CUDA_STANDARD_REQUIRED ON)
     set(CMAKE_CUDA_FLAGS "-arch=sm_35 -use_fast_math ${CMAKE_CUDA_FLAGS}")
     set(CMAKE_CUDA_FLAGS_DEBUG "-G ${CMAKE_CUDA_FLAGS_DEBUG}")
+    set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 endif ()
 
 set(CMAKE_CXX_STANDARD 17)
@@ -50,24 +51,5 @@ add_subdirectory(third_party)
 add_subdirectory(utils)
 add_subdirectory(cameras)
 add_subdirectory(modules)
+add_subdirectory(examples)
 
-add_executable(run_sr300 run_sr300.cc)
-target_link_libraries(run_sr300 PRIVATE sr300 modules)
-
-add_executable(run_zed_native run_zed_native.cc)
-target_link_libraries(run_zed_native PRIVATE zed_native modules)
-
-add_executable(run_zed_native_l515 run_zed_native_l515.cc)
-target_link_libraries(run_zed_native_l515 PRIVATE zed_native l515 modules)
-
-add_executable(pseudo_online_capture pseudo_online_capture.cc)
-target_link_libraries(pseudo_online_capture PRIVATE zed_native l515 modules)
-
-if (${ZED_FOUND})
-    add_executable(run_zed run_zed.cc)
-    target_link_libraries(run_zed PRIVATE zed modules)
-endif (${ZED_FOUND})
-
-if (CMAKE_CUDA_COMPILER)
-    add_subdirectory(examples)
-endif ()

@@ -1,55 +1,63 @@
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <mutex>
+#include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
+#include <opencv2/highgui.hpp>
 #include <string>
 #include <thread>
+#include <vector>
+#include <yaml-cpp/node/parse.h>
 #include <yaml-cpp/yaml.h>
 
-#include <pangolin_viewer/viewer.h>
+#include "pangolin_viewer/viewer.h"
 
-#include <openvslam/config.h>
+#include "openvslam/config.h"
 
-#include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <popl.hpp>
 #include <spdlog/spdlog.h>
 
-#include "cameras/zed.h"
+#include "cameras/zed_native.h"
 #include "modules/slam_module.h"
 #include "utils/data_logger.hpp"
 #include "utils/time.hpp"
 
-class DepthData {
+class StereoData {
  public:
-  DepthData() = default;
+  StereoData() = default;
 
-  DepthData(const DepthData &others) 
-    : img_rgb(others.img_rgb.clone()),
-      img_depth(others.img_depth.clone()), 
+  StereoData(const StereoData &others)
+    : img_left(others.img_left.clone()),
+      img_right(others.img_right.clone()),
       id(others.id) {}
 
-  cv::Mat img_rgb;
-  cv::Mat img_depth;
+  cv::Mat img_left;
+  cv::Mat img_right;
   unsigned int id;
 };
 
-class DepthLogger : public DataLogger<DepthData> {
+class StereoLogger : public DataLogger<StereoData> {
  public:
-  DepthLogger(const std::string &logdir) 
+  StereoLogger(const std::string &logdir)
       : logdir_(logdir),
-        DataLogger<DepthData>() {}
+        DataLogger<StereoData>() {}
 
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const DepthData &data) override {
-    const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
-    const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
-    cv::Mat img_depth_uint16;
-    data.img_depth.convertTo(img_depth_uint16, CV_16UC1);
-    cv::imwrite(rgb_path, data.img_rgb);
-    cv::imwrite(depth_path, img_depth_uint16);
+  void save_data(const StereoData &data) override {
+    if (data.img_left.empty() || data.img_right.empty())
+      return;
+
+    const std::string left_path = logdir_ + "/" + std::to_string(data.id) + "_left.png";
+    const std::string right_path = logdir_ + "/" + std::to_string(data.id) + "_right.png";
+
+    cv::imwrite(left_path, data.img_left);
+    cv::imwrite(right_path, data.img_right);
     logged_ids.push_back(data.id);
   }
 
@@ -61,33 +69,29 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &vocab_file_path,
               const std::string &map_db_path,
               const std::string &logdir,
-              ZED *camera) {
-  slam_system SLAM(cfg, vocab_file_path);
+              ZEDNative *camera) {
+  SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
   pangolin_viewer::viewer viewer(
       cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
 
-  DepthLogger logger(logdir);
+  StereoLogger logger(logdir);
 
-  DepthData data;
   std::thread t([&]() {
     const auto start = std::chrono::steady_clock::now();
-    cv::Mat img_left, img_right;
+    StereoData data;
     while (true) {
       if (SLAM.terminate_is_requested())
         break;
 
-      camera->get_stereo_img(&img_left, &img_right, &data.img_rgb, &data.img_depth);
+      camera->get_stereo_img(&data.img_left, &data.img_right);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
-      data.id = SLAM.feed_stereo_images(img_left, img_right, timestamp / 1e6);
+      data.id = SLAM.feed_stereo_images(
+          data.img_left, data.img_right, timestamp / 1e6);
 
       logger.log_data(data);
-    }
-
-    while (SLAM.loop_BA_is_running()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
   });
 
@@ -102,32 +106,16 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
   SLAM.save_matched_trajectory(traj_path, logger.logged_ids);
 }
 
-std::shared_ptr<openvslam::config> get_config(const std::string &config_file_path,
-                                              const ZED &camera) {
+std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
-  // modify configuration based on realsense camera data
-  // pre-defined stream profile
-  auto cam_config = camera.get_camera_config();
-  yaml_node["Camera.fps"] = cam_config.fps;
-  yaml_node["Camera.cols"] = cam_config.resolution.width;
-  yaml_node["Camera.rows"] = cam_config.resolution.height;
-  yaml_node["Camera.color_order"] = "Gray"; 
-  // camera intrinsics
-  yaml_node["Camera.fx"] = cam_config.calibration_parameters.left_cam.fx;
-  yaml_node["Camera.fy"] = cam_config.calibration_parameters.left_cam.fy;
-  yaml_node["Camera.cx"] = cam_config.calibration_parameters.left_cam.cx;
-  yaml_node["Camera.cy"] = cam_config.calibration_parameters.left_cam.cy;
-  yaml_node["Camera.focal_x_baseline"] = 
-    cam_config.calibration_parameters.stereo_transform.getTranslation().x *
-    cam_config.calibration_parameters.left_cam.fx / 1e3; // unit [mm] to [m]
-  // zero camera distortion
-  yaml_node["Camera.k1"] = 0;
-  yaml_node["Camera.k2"] = 0;
-  yaml_node["Camera.p1"] = 0;
-  yaml_node["Camera.p2"] = 0;
-  yaml_node["Camera.k3"] = 0;
-
-  return std::make_shared<openvslam::config>(yaml_node, config_file_path);
+  const stereo_rectifier rectifier(yaml_node);
+  const cv::Mat rectified_intrinsics = rectifier.get_rectified_intrinsics();
+  yaml_node["Camera.fx"] = rectified_intrinsics.at<double>(0, 0);
+  yaml_node["Camera.fy"] = rectified_intrinsics.at<double>(1, 1);
+  yaml_node["Camera.cx"] = rectified_intrinsics.at<double>(0, 2);
+  yaml_node["Camera.cy"] = rectified_intrinsics.at<double>(1, 2);
+  yaml_node["Camera.focal_x_baseline"] = -rectified_intrinsics.at<double>(0, 3);
+  return std::make_shared<openvslam::config>(yaml_node);
 }
 
 int main(int argc, char *argv[]) {
@@ -140,8 +128,10 @@ int main(int argc, char *argv[]) {
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
   auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db",
                             "path to store the map database", "");
-  auto log_dir = op.add<popl::Value<std::string>>("", "logdir", 
+  auto log_dir = op.add<popl::Value<std::string>>("", "logdir",
                             "directory to store logged data", "./log");
+  auto device_id = op.add<popl::Value<int>>("", "devid", "camera device id", 0);
+
   try {
     op.parse(argc, argv);
   } catch (const std::exception &e) {
@@ -169,17 +159,19 @@ int main(int argc, char *argv[]) {
   else
     spdlog::set_level(spdlog::level::info);
 
-  ZED camera;
+  YAML::Node yaml_node = YAML::LoadFile(config_file_path->value());
 
   std::shared_ptr<openvslam::config> cfg;
   try {
-    cfg = get_config(config_file_path->value(), camera);
+    cfg = get_and_set_config(config_file_path->value());
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
   }
 
-  tracking(cfg, 
+  ZEDNative camera(*cfg, device_id->value());
+
+  tracking(cfg,
       vocab_file_path->value(), map_db_path->value(), log_dir->value(), &camera);
 
   return EXIT_SUCCESS;

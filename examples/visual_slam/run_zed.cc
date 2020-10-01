@@ -5,18 +5,17 @@
 #include <thread>
 #include <yaml-cpp/yaml.h>
 
-#include "pangolin_viewer/viewer.h"
+#include <pangolin_viewer/viewer.h>
 
-#include "openvslam/config.h"
-#include "openvslam/system.h"
+#include <openvslam/config.h>
 
-#include <librealsense2/rs.hpp>
+#include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <popl.hpp>
 #include <spdlog/spdlog.h>
 
-#include "cameras/sr300.h"
+#include "cameras/zed.h"
 #include "modules/slam_module.h"
 #include "utils/data_logger.hpp"
 #include "utils/time.hpp"
@@ -25,9 +24,9 @@ class DepthData {
  public:
   DepthData() = default;
 
-  DepthData(const DepthData &others) 
+  DepthData(const DepthData &others)
     : img_rgb(others.img_rgb.clone()),
-      img_depth(others.img_depth.clone()), 
+      img_depth(others.img_depth.clone()),
       id(others.id) {}
 
   cv::Mat img_rgb;
@@ -37,7 +36,7 @@ class DepthData {
 
 class DepthLogger : public DataLogger<DepthData> {
  public:
-  DepthLogger(const std::string &logdir) 
+  DepthLogger(const std::string &logdir)
       : logdir_(logdir),
         DataLogger<DepthData>() {}
 
@@ -60,11 +59,10 @@ class DepthLogger : public DataLogger<DepthData> {
 
 void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &vocab_file_path,
-              const SR300 &camera,
               const std::string &map_db_path,
               const std::string &logdir,
-              bool use_depth = true) {
-  slam_system SLAM(cfg, vocab_file_path);
+              ZED *camera) {
+  SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
   pangolin_viewer::viewer viewer(
@@ -72,20 +70,18 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
 
   DepthLogger logger(logdir);
 
+  DepthData data;
   std::thread t([&]() {
     const auto start = std::chrono::steady_clock::now();
-    DepthData data;
+    cv::Mat img_left, img_right;
     while (true) {
       if (SLAM.terminate_is_requested())
         break;
 
-      camera.get_rgbd_frame(&data.img_rgb, &data.img_depth);
+      camera->get_stereo_img(&img_left, &img_right, &data.img_rgb, &data.img_depth);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
-      if (use_depth)
-        data.id = SLAM.feed_rgbd_images(data.img_rgb, data.img_depth, timestamp / 1e6);
-      else
-        SLAM.feed_monocular_frame(data.img_rgb, timestamp / 1e6);
+      data.id = SLAM.feed_stereo_images(img_left, img_right, timestamp / 1e6);
 
       logger.log_data(data);
     }
@@ -106,34 +102,30 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
   SLAM.save_matched_trajectory(traj_path, logger.logged_ids);
 }
 
-std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path,
-                                                      SR300 *camera) {
+std::shared_ptr<openvslam::config> get_config(const std::string &config_file_path,
+                                              const ZED &camera) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
   // modify configuration based on realsense camera data
   // pre-defined stream profile
-  yaml_node["Camera.fps"] = SR300::FPS;
-  yaml_node["Camera.cols"] = SR300::WIDTH;
-  yaml_node["Camera.rows"] = SR300::HEIGHT;
-  yaml_node["Camera.color_order"] = "RGB"; 
+  auto cam_config = camera.get_camera_config();
+  yaml_node["Camera.fps"] = cam_config.fps;
+  yaml_node["Camera.cols"] = cam_config.resolution.width;
+  yaml_node["Camera.rows"] = cam_config.resolution.height;
+  yaml_node["Camera.color_order"] = "Gray";
   // camera intrinsics
-  rs2_intrinsics i = camera->get_camera_intrinsics();
-  yaml_node["Camera.fx"] = i.fx;
-  yaml_node["Camera.fy"] = i.fy;
-  yaml_node["Camera.cx"] = i.ppx;
-  yaml_node["Camera.cy"] = i.ppy;
+  yaml_node["Camera.fx"] = cam_config.calibration_parameters.left_cam.fx;
+  yaml_node["Camera.fy"] = cam_config.calibration_parameters.left_cam.fy;
+  yaml_node["Camera.cx"] = cam_config.calibration_parameters.left_cam.cx;
+  yaml_node["Camera.cy"] = cam_config.calibration_parameters.left_cam.cy;
+  yaml_node["Camera.focal_x_baseline"] =
+    cam_config.calibration_parameters.stereo_transform.getTranslation().x *
+    cam_config.calibration_parameters.left_cam.fx / 1e3; // unit [mm] to [m]
   // zero camera distortion
   yaml_node["Camera.k1"] = 0;
   yaml_node["Camera.k2"] = 0;
   yaml_node["Camera.p1"] = 0;
   yaml_node["Camera.p2"] = 0;
   yaml_node["Camera.k3"] = 0;
-  // depth factor
-  yaml_node["depthmap_factor"] = camera->get_depth_scale();
-  // realsense depth camera options
-  camera->set_depth_sensor_option(RS2_OPTION_FILTER_OPTION, 
-                                  yaml_node["RS.filter_option"].as<float>());
-  camera->set_depth_sensor_option(RS2_OPTION_MOTION_RANGE, 
-                                  yaml_node["RS.motion_range"].as<float>());
 
   return std::make_shared<openvslam::config>(yaml_node, config_file_path);
 }
@@ -146,10 +138,9 @@ int main(int argc, char *argv[]) {
   auto config_file_path = op.add<popl::Value<std::string>>("c", "config",
                                                            "config file path");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
-  auto depth = op.add<popl::Switch>("", "depth", "use depth information");
   auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db",
                             "path to store the map database", "");
-  auto log_dir = op.add<popl::Value<std::string>>("", "logdir", 
+  auto log_dir = op.add<popl::Value<std::string>>("", "logdir",
                             "directory to store logged data", "./log");
   try {
     op.parse(argc, argv);
@@ -178,18 +169,18 @@ int main(int argc, char *argv[]) {
   else
     spdlog::set_level(spdlog::level::info);
 
-  SR300 camera;
+  ZED camera;
 
   std::shared_ptr<openvslam::config> cfg;
   try {
-    cfg = get_and_set_config(config_file_path->value(), &camera);
+    cfg = get_config(config_file_path->value(), camera);
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
   }
 
-  tracking(cfg, 
-      vocab_file_path->value(), camera, map_db_path->value(), log_dir->value(), depth->is_set());
+  tracking(cfg,
+      vocab_file_path->value(), map_db_path->value(), log_dir->value(), &camera);
 
   return EXIT_SUCCESS;
 }
