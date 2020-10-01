@@ -1,9 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 #include <opencv2/core/core.hpp>
 
-#include "utils/cuda/vector.cuh"
+// #include "utils/cuda/vector.cuh"
 
 /**
  * struct containing rgb image and relevant information.
@@ -76,8 +77,9 @@ typedef struct {
  *                  time of the LAST L515 images that was used to update the reconstruction.
  */
 typedef struct {
-    float* data;
-    uint32_t size;
+    // TODO: right now for simplicity, this is not pointer.
+    // this needs to be changed in the future.
+    std::vector<float> data;
     float timestamp;
 } semantic_recon_t;
 
@@ -105,92 +107,90 @@ typedef struct {
     float depth_scale;
 } camera_intrinsics_t;
 
-class perception_top_level {
-    /**
-     * 
-     * Constrcutor. Start everything.
-     * 
-     * @param   l515_info   Intrinsics and Distortion Calibration for L515 camera.
-     *                      See comments above camera_intrinsics_t
-     * @param   zed_info    Intrinsics and Distortion Calibration for ZED camera.
-     *                      See comments above camera_intrinsics_t
-     * @param   l515_2_zed  SE3 transformation from L515 camera to ZED camera
-     */
-    perception_top_level(
-        camera_intrinsics_t l515_info,
-        camera_intrinsics_t zed_info,
-        se3_pose_t          l515_2_zed
-    );
+/**
+ * struct containing ZED stereo camera extrinsics for rectification
+ * 
+ * @var rotation    Rotation represented in Euler
+ * 
+ * @var translation x/y/z translation.
+ * 
+ */
+typedef struct {
+    float rotation[3];
+    float translation[3];
+} stereo_rect_extrinsics_t;
 
-    /**
-     * feed the latest RGB image from the L515 camera to perception module
-     * 
-     * @param   img_data    see comments above rgb_image_t struct definition.
-     * 
-     */
-    void feed_l515_rgb_image(rgb_image_t img_data);
+class disinfect_slam_top_level {
+    public:
+        /**
+         * 
+         * Constrcutor. Start everything.
+         * 
+         * @param   l515_info   Intrinsics and Distortion Calibration for L515 camera.
+         *                      See comments above camera_intrinsics_t
+         * @param   zed_info    Intrinsics and Distortion Calibration for ZED camera.
+         *                      See comments above camera_intrinsics_t
+         * @param   l515_2_zed  SE3 transformation from L515 camera to ZED camera
+         */
+        disinfect_slam_top_level(
+            camera_intrinsics_t         l515_info,
+            camera_intrinsics_t         zed_left_info,
+            camera_intrinsics_t         zed_right_info,
+            se3_pose_t                  l515_2_zed,
+            stereo_rect_extrinsics_t    zed_ext_info
+        );
 
-    /**
-     * feed the latest LEFT RGB image from the ZED camera to perception module
-     * 
-     * @return          see comments above rgb_image_t struct definition.
-     * 
-     */
-    void feed_zed_left_rgb_image(rgb_image_t img_data);
+        /**
+         * feed the latest (synchrnoized) images from cameras to perception module
+         * 
+         * @param   l515_rgb    Raw RGB image from the L515 camera
+         * @param   l515_depth  Raw depth image from the L515 camera
+         * @param   zed_left    Raw left RGB image from the ZED camera
+         * @param   zed_right   Raw right RGB image from the ZED camera
+         * 
+         */
+        void feed_camera_images(
+            rgb_image_t l515_rgb,
+            depth_image_t l515_depth,
+            rgb_image_t zed_left,
+            rgb_image_t zed_right
+        );
 
-    /**
-     * feed the latest RIGHT RGB image from the ZED camera to perception module
-     * 
-     * @param   img_data    see comments above rgb_image_t struct definition.
-     * 
-     */
-    void feed_zed_right_rgb_image(rgb_image_t img_data);
+        /**
+         * get latest estimated pose (solely based on ZED camera input) from vSLAM
+         * 
+         * @return          see comments above se3_pose_t struct definition.
+         *
+         */
+        se3_pose_t get_estimated_pose();
 
-    /**
-     * feed the latest depth image from the ZED camera to perception module
-     * 
-     * @param   img_data    see comments above rgb_image_t struct definition.
-     * 
-     */
-    void feed_zed_depth_image(depth_image_t img_data);
+        /**
+         * dump the entire semantically-fused reconstruction map
+         * 
+         * @return          see comments above semantic_recon_t struct definition.
+         * 
+         */
+        semantic_recon_t get_full_semantic_reconstruction();
 
-    /**
-     * feed the latest depth image from the Intel L515 camera to perception module
-     * 
-     * @param   img_data    see comments above rgb_image_t struct definition.
-     * 
-     */
-    void get_l515_depth_image(depth_image_t img_data);
-
-    /**
-     * get latest estimated pose (solely based on ZED camera input) from vSLAM
-     * 
-     * @return          see comments above se3_pose_t struct definition.
-     *
-     */
-    se3_pose_t get_estimated_pose();
-
-    /**
-     * dump the entire semantically-fused reconstruction map
-     * 
-     * @return          see comments above semantic_recon_t struct definition.
-     * 
-     */
-    semantic_recon_t get_full_semantic_reconstruction();
-
-    /**
-     * dump only PART of semantically-fused reconstruction map.
-     * The part is given by user as a 3D bounding box.
-     * 
-     * @param bbox_vertex   the xyz coordinate of the lower-left-front vertex
-     * @param bbox_size     the 3D dimension of the bounding box
-     *                          - (length, width, height)
-     * 
-     * @return          see comments above semantic_recon_t struct definition.                 
-     * 
-     */
-    semantic_recon_t get_part_semantic_reconstruction(
-        Vector3<float> bounding_box,
-        Vector3<float> bbox_size
-    );
+        /**
+         * dump only PART of semantically-fused reconstruction map.
+         * The part is given by user as a 3D bounding box.
+         * 
+         * @param bbox_vertex   the xyz coordinate of the lower-left-front vertex
+         * @param bbox_size     the 3D dimension of the bounding box
+         *                          - (length, width, height)
+         * 
+         * @return          see comments above semantic_recon_t struct definition.                 
+         * 
+         */
+        // semantic_recon_t get_part_semantic_reconstruction(
+        //     Vector3<float> bounding_box,
+        //     Vector3<float> bbox_size
+        // );
+    private:
+        camera_intrinsics_t l515_info;
+        camera_intrinsics_t zed_left_info;
+        camera_intrinsics_t zed_right_info;
+        se3_pose_t l515_2_zed_transform;
+        stereo_rect_extrinsics_t zed_ext_info;
 };
