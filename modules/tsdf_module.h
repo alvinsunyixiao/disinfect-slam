@@ -27,12 +27,13 @@ struct TSDFSystemInput {
 class TSDFSystem {
  public:
   TSDFSystem(float voxel_size, float truncation, float max_depth,
-             const CameraIntrinsics<float> &intrinsics);
+             const CameraIntrinsics<float> &intrinsics,
+             const SE3<float> &extrinsics = SE3<float>::Identity());
   ~TSDFSystem();
 
-  void Integrate(const SE3<float> &cam_P_world,
+  void Integrate(const SE3<float> &posecam_P_world,
                  const cv::Mat &img_rgb, const cv::Mat &img_depth,
-                 const cv::Mat &img_ht, const cv::Mat &img_lt);
+                 const cv::Mat &img_ht = {}, const cv::Mat &img_lt = {});
 
   void Render(const CameraParams &virtual_cam,
               const SE3<float> cam_P_world,
@@ -46,6 +47,8 @@ class TSDFSystem {
   float max_depth_;
   // instrsinsics of (undistorted) camera used for TSDF update
   const CameraIntrinsics<float> intrinsics_;
+  // extrinsics w.r.t. pose camera
+  const SE3<float> cam_P_posecam_;
   // main integration thread
   std::thread t_;
   // input queue lock

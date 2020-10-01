@@ -3,9 +3,14 @@
 #include "modules/tsdf_module.h"
 
 TSDFSystem::TSDFSystem(float voxel_size, float truncation, float max_depth,
-                       const CameraIntrinsics<float> &intrinsics)
-  : tsdf_(voxel_size, truncation), max_depth_(max_depth), intrinsics_(intrinsics),
-    t_(&TSDFSystem::Run, this) {}
+                       const CameraIntrinsics<float> &intrinsics,
+                       const SE3<float> &extrinsics)
+  : tsdf_(voxel_size, truncation), max_depth_(max_depth),
+    intrinsics_(intrinsics), cam_P_posecam_(extrinsics),
+    t_(&TSDFSystem::Run, this) {
+  spdlog::debug("[TSDF System] Constructing with camera intrinsics: fx: {} fy: {} cx: {} cy:{}",
+      intrinsics.m00, intrinsics.m11, intrinsics.m02, intrinsics.m12);
+}
 
 TSDFSystem::~TSDFSystem() {
   {
@@ -15,11 +20,20 @@ TSDFSystem::~TSDFSystem() {
   t_.join();
 }
 
-void TSDFSystem::Integrate(const SE3<float> &cam_P_world,
+void TSDFSystem::Integrate(const SE3<float> &posecam_P_world,
                            const cv::Mat &img_rgb, const cv::Mat &img_depth,
                            const cv::Mat &img_ht, const cv::Mat &img_lt) {
   std::lock_guard<std::mutex> lock(mtx_queue_);
-  inputs_.push(std::make_unique<TSDFSystemInput>(cam_P_world, img_rgb, img_depth, img_ht, img_lt));
+  if (img_ht.empty() || img_lt.empty()) {
+    inputs_.push(std::make_unique<TSDFSystemInput>(
+        cam_P_posecam_ * posecam_P_world, img_rgb, img_depth,
+        cv::Mat::ones(img_depth.rows, img_depth.cols, img_depth.type()),
+        cv::Mat::ones(img_depth.rows, img_depth.cols, img_depth.type())));
+  }
+  else {
+    inputs_.push(std::make_unique<TSDFSystemInput>(
+        cam_P_posecam_ * posecam_P_world, img_rgb, img_depth, img_ht, img_lt));
+  }
 }
 
 void TSDFSystem::Render(const CameraParams &virtual_cam,
