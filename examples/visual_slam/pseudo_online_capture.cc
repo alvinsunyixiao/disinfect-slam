@@ -79,7 +79,7 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &logdir,
               const L515 &l515,
               const ZEDNative &zed_native) {
-  slam_system SLAM(cfg, vocab_file_path);
+  SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
   pangolin_viewer::viewer viewer(
