@@ -36,6 +36,17 @@ CameraIntrinsics<float> get_intrinsics(const std::string &config_file_path) {
                                  config["Camera.cy"].as<float>());
 }
 
+SE3<float> get_extrinsics(const std::string &config_file_path) {
+  YAML::Node config = YAML::LoadFile(config_file_path);
+  const auto m = config["Extrinsics"].as<std::vector<double>>();
+  return SE3<float>(
+    m[0], m[1], m[2], m[3],
+    m[4], m[5], m[6], m[7],
+    m[8], m[9], m[10], m[11],
+    m[12], m[13], m[14], m[15]
+  );
+}
+
 class ImageRenderer : public RendererBase {
  public:
   ImageRenderer(const std::string &name,
@@ -154,19 +165,20 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
                  const std::shared_ptr<SLAMSystem> &SLAM,
                  const std::string &config_file_path) {
   // initialize TSDF
-  auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4, get_intrinsics(config_file_path));
+  auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
+      get_intrinsics(config_file_path), get_extrinsics(config_file_path));
   SLAM->startup();
 
   ImageRenderer renderer("tsdf", SLAM, TSDF, config_file_path);
 
-  std::thread t([&]() {
+  std::thread t_slam([&]() {
+    cv::Mat img_left, img_right;
     while (true) {
-      cv::Mat img_left, img_right, img_rgb, img_depth;
+      //cv::Mat img_left, img_right, img_rgb, img_depth;
       if (SLAM->terminate_is_requested())
         break;
       // get sensor readings
       zed_native.get_stereo_img(&img_left, &img_right);
-      l515.get_rgbd_frame(&img_rgb, &img_depth);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
       // visual slam
       const auto m = SLAM->feed_stereo_frame(img_left, img_right, timestamp / 1e6);
@@ -176,18 +188,33 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
         m(2, 0), m(2, 1), m(2, 2), m(2, 3),
         m(3, 0), m(3, 1), m(3, 2), m(3, 3)
       );
-      // TSDF update
+    }
+  });
+
+  std::thread t_tsdf([&]() {
+    const auto map_publisher = SLAM->get_map_publisher();
+    while (true) {
+      cv::Mat img_rgb, img_depth;
+      if (SLAM->terminate_is_requested())
+        break;
+      l515.get_rgbd_frame(&img_rgb, &img_depth);
+      const auto m = map_publisher->get_current_cam_pose();
+      const SE3<float> posecam_P_world(
+        m(0, 0), m(0, 1), m(0, 2), m(0, 3),
+        m(1, 0), m(1, 1), m(1, 2), m(1, 3),
+        m(2, 0), m(2, 1), m(2, 2), m(2, 3),
+        m(3, 0), m(3, 1), m(3, 2), m(3, 3)
+      );
       cv::resize(img_rgb, img_rgb, cv::Size(), .5, .5);
       cv::resize(img_depth, img_depth, cv::Size(), .5, .5);
       img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth);
-      spdlog::debug("[Main] Frame integration takes {} us",
-          get_timestamp<std::chrono::microseconds>() - timestamp);
     }
   });
 
   renderer.Run();
-  t.join();
+  t_slam.join();
+  t_tsdf.join();
   SLAM->shutdown();
 }
 
