@@ -15,33 +15,42 @@ int main() {
     image_bgr = cv::imread("/home/roger/hospital_images/24.jpg");
     cv::cvtColor(image_bgr, image_rgb, cv::COLOR_BGR2RGB);
 
-    my_engine.infer_one(image_rgb);
-/*
-    std::cout << "Input shape: " << my_gpu_tensor.sizes() << std::endl;
+    // Test inference and uint8 conversion
     const auto start = std::chrono::steady_clock::now();
-    
+    std::vector<cv::Mat> ret_prob_map = my_engine.infer_one(image_rgb, true);
     const auto now = std::chrono::steady_clock::now();
     auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
     std::cout << "Time elapsed (in milliseconds): " << time_elapsed << std::endl;
     std::cout << "Test image feeded." << std::endl;
-    std::cout << "Output shape: " << test_image_output.sizes() << std::endl;
-    // std::cout << test_image_output << std::endl;
+    std::cout << "Saving prob maps to current directory." << std::endl;
+    cv::imwrite("ht_prob.png", ret_prob_map[0]);
+    cv::imwrite("lt_prob.png", ret_prob_map[1]);
 
+    // Test inference and float conversion
+    const auto n_start = std::chrono::steady_clock::now();
+    ret_prob_map.clear();
+    ret_prob_map = my_engine.infer_one(image_rgb, false);
+    const auto n_now = std::chrono::steady_clock::now();
+    auto n_time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(n_now - n_start).count();
+    std::cout << "Time elapsed (in milliseconds): " << n_time_elapsed << std::endl;
+    std::cout << "Test image feeded." << std::endl;
+    std::cout << "Saving prob maps to current directory." << std::endl;
+    cv::Mat vis_ht, vis_lt;
+    ret_prob_map[0].convertTo(vis_ht, CV_8UC1, 255); // scale range from 0-1 to 0-255
+    ret_prob_map[1].convertTo(vis_lt, CV_8UC1, 255); // scale range from 0-1 to 0-255
+    cv::imwrite("float_ht_prob.png", vis_ht);
+    cv::imwrite("float_lt_prob.png", vis_lt);
+
+    // Benchmark performance
     int num_trials = 1000;
-    torch::Tensor loop_img_output;
     const auto loop_start = std::chrono::steady_clock::now();
     for (int i = 0; i < num_trials; ++i) {
-        inputs.clear();
-        inputs.push_back(torch::ones({1, 3, 352, 640}).to(torch::kCUDA));
-        loop_img_output = module.forward(inputs).toTensor();
+        ret_prob_map.clear();
+        ret_prob_map = my_engine.infer_one(image_rgb, true);
     }
     const auto loop_end = std::chrono::steady_clock::now();
     auto loop_total = std::chrono::duration_cast<std::chrono::milliseconds>(loop_end - loop_start).count();
     std::cout << "Loop total time (in milliseconds): " << loop_total << std::endl;
     std::cout << "Inference time per image (in milliseconds): " << ((uint32_t)loop_total / num_trials) << std::endl;
-
-    test_image_output.to(torch::kCPU);
-    cv::Mat ret = tensor_to_mat(test_image_output);
-    */
     return 0;
 }
