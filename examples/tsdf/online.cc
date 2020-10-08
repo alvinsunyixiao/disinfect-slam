@@ -212,8 +212,6 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
       std::vector<cv::Mat> prob_map = segmentation_engine->infer_one(img_rgb, false);
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth, prob_map[0], prob_map[1]);
-      spdlog::debug("[Main] Frame integration takes {} us",
-          get_timestamp<std::chrono::microseconds>() - timestamp);
     }
   });
 
@@ -271,7 +269,7 @@ int main(int argc, char *argv[]) {
   L515 l515;
   // initialize slam
   auto SLAM = std::make_shared<SLAMSystem>(cfg, vocab_file_path->value());
-  auto my_engine = std::make_shared<inference_engine>("/home/roger/disinfect-slam/segmentation/ht_lt.pt");
+  auto my_engine = std::make_shared<inference_engine>("/home/alvin/Downloads/ht_lt.pt");
   reconstruct(zed_native, l515, SLAM, my_engine, config_file_path->value());
 
   return EXIT_SUCCESS;
