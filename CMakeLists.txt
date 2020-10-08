@@ -31,6 +31,11 @@ find_package(ZED 3 QUIET)
 # Camera SDKs
 find_package(realsense2 REQUIRED)
 find_package(OpenCV REQUIRED)
+# DL Inference
+if (CMAKE_CUDA_COMPILER)
+    find_package(Torch REQUIRED)
+    find_package(OpenCV REQUIRED)
+endif ()
 
 # enable testing
 enable_testing()
@@ -51,5 +56,8 @@ add_subdirectory(third_party)
 add_subdirectory(utils)
 add_subdirectory(cameras)
 add_subdirectory(modules)
+if (CMAKE_CUDA_COMPILER)
+    add_subdirectory(segmentation)
+endif ()
 add_subdirectory(examples)
 
