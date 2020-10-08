@@ -20,9 +20,8 @@ cv::Mat float_tensor_to_float_mat(const torch::Tensor & my_tensor) {
     temp_tensor = my_tensor.to(torch::kCPU);
     cv::Mat ret(temp_tensor.sizes()[0], temp_tensor.sizes()[1], CV_32FC1);
     //copy the data from out_tensor to resultImg
-    std::cout << "Torch float size: " << sizeof(torch::kFloat32) << std::endl;
-    std::cout << "shape: " << my_tensor.sizes() << std::endl;
     std::memcpy((void *) ret.data, temp_tensor.data_ptr(), sizeof(float) * temp_tensor.numel());
+    cv::resize(ret, ret, cv::Size(640, 360));
     return ret;
 }
 
@@ -56,7 +55,7 @@ std::vector<cv::Mat> inference_engine::infer_one(const cv::Mat & rgb_img, bool r
     this->input_buffer.push_back(downsized_rgb_img_tensor_cuda);
 
     torch::Tensor ht_lt_prob_map = this->engine.forward(this->input_buffer).toTensor().squeeze().detach();
-    
+
     if (ret_uint8_flag) {
         ret.push_back(float_tensor_to_uint8_mat(ht_lt_prob_map[0]));
         ret.push_back(float_tensor_to_uint8_mat(ht_lt_prob_map[1]));
