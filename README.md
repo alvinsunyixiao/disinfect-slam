@@ -57,3 +57,9 @@ To run with ZED SDK (CUDA and ZED SDK is required)
 ## Running Reconstruction
 
 This section is still WIP
+
+## TODO
+
+- Update installation.md
+- Add a sciprt folder for easier user access
+- Update segmentation inference example to take in custom images
