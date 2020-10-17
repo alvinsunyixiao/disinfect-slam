@@ -16,6 +16,7 @@
 #include "utils/time.hpp"
 #include "utils/gl/renderer_base.h"
 #include "utils/cuda/errors.cuh"
+#include "utils/rotation_math/pose_manager.h"
 
 std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
@@ -173,6 +174,8 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
 
   ImageRenderer renderer("tsdf", SLAM, TSDF, config_file_path);
 
+  auto POSE_MANAGER = std::make_shared<pose_manager>();
+
   std::thread t_slam([&]() {
     cv::Mat img_left, img_right;
     while (true) {
@@ -183,7 +186,15 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       zed_native.get_stereo_img(&img_left, &img_right);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
       // visual slam
-      const auto m = SLAM->feed_stereo_images_w_feedback(img_left, img_right, timestamp / 1e6);
+      const pose_valid_tuple m = SLAM->feed_stereo_images_w_feedback(img_left, img_right, timestamp / 1e6);
+      const SE3<float> posecam_P_world(
+        m.first(0, 0), m.first(0, 1), m.first(0, 2), m.first(0, 3),
+        m.first(1, 0), m.first(1, 1), m.first(1, 2), m.first(1, 3),
+        m.first(2, 0), m.first(2, 1), m.first(2, 2), m.first(2, 3),
+        m.first(3, 0), m.first(3, 1), m.first(3, 2), m.first(3, 3)
+      );
+      if (m.second)
+        POSE_MANAGER->register_valid_pose(timestamp, posecam_P_world);
     }
   });
 
@@ -194,13 +205,8 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       if (SLAM->terminate_is_requested())
         break;
       l515.get_rgbd_frame(&img_rgb, &img_depth);
-      const auto m = map_publisher->get_current_cam_pose();
-      const SE3<float> posecam_P_world(
-        m(0, 0), m(0, 1), m(0, 2), m(0, 3),
-        m(1, 0), m(1, 1), m(1, 2), m(1, 3),
-        m(2, 0), m(2, 1), m(2, 2), m(2, 3),
-        m(3, 0), m(3, 1), m(3, 2), m(3, 3)
-      );
+      const auto timestamp = get_timestamp<std::chrono::microseconds>();
+      const SE3<float> posecam_P_world = POSE_MANAGER->query_pose(timestamp);
       cv::resize(img_rgb, img_rgb, cv::Size(), .5, .5);
       cv::resize(img_depth, img_depth, cv::Size(), .5, .5);
       img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
@@ -263,7 +269,7 @@ int main(int argc, char *argv[]) {
   L515 l515;
   // initialize slam
   auto SLAM = std::make_shared<SLAMSystem>(cfg, vocab_file_path->value());
-  auto my_engine = std::make_shared<inference_engine>("/home/alvin/Downloads/ht_lt.pt");
+  auto my_engine = std::make_shared<inference_engine>("/home/roger/Downloads/ht_lt.pt");
   reconstruct(zed_native, l515, SLAM, my_engine, config_file_path->value());
 
   return EXIT_SUCCESS;
