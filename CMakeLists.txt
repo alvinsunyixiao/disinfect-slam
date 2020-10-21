@@ -32,10 +32,10 @@ find_package(ZED 3 QUIET)
 find_package(realsense2 REQUIRED)
 find_package(OpenCV REQUIRED)
 # DL Inference
-if (CMAKE_CUDA_COMPILER)
-    find_package(Torch REQUIRED)
-    find_package(OpenCV REQUIRED)
-endif ()
+find_package(Torch QUIET HINTS ${CMAKE_SOURCE_DIR}/third_party/libtorch)
+if (NOT Torch_FOUND)
+    MESSAGE(WARNING "libtorch not found. Excluding DL inference engine and examples.")
+endif()
 
 # enable testing
 enable_testing()
@@ -46,7 +46,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mtune=native -march=native")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mtune=native -march=native")
 
 include_directories(${CMAKE_SOURCE_DIR})
-
 # Interface wrapper lib for OpenVSLAM
 add_library(openvslam INTERFACE)
 target_link_libraries(openvslam
@@ -56,7 +55,7 @@ add_subdirectory(third_party)
 add_subdirectory(utils)
 add_subdirectory(cameras)
 add_subdirectory(modules)
-if (CMAKE_CUDA_COMPILER)
+if (TORCH_FOUND)
     add_subdirectory(segmentation)
 endif ()
 add_subdirectory(examples)
