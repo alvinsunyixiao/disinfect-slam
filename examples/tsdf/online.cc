@@ -198,7 +198,6 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
   });
 
   std::thread t_tsdf([&]() {
-    const auto map_publisher = SLAM->get_map_publisher();
     while (true) {
       cv::Mat img_rgb, img_depth;
       if (SLAM->terminate_is_requested())
