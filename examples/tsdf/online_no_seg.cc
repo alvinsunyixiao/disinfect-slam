@@ -16,37 +16,7 @@
 #include "utils/gl/renderer_base.h"
 #include "utils/cuda/errors.cuh"
 #include "utils/rotation_math/pose_manager.h"
-
-std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
-  YAML::Node yaml_node = YAML::LoadFile(config_file_path);
-  const stereo_rectifier rectifier(yaml_node);
-  const cv::Mat rectified_intrinsics = rectifier.get_rectified_intrinsics();
-  yaml_node["Camera.fx"] = rectified_intrinsics.at<double>(0, 0);
-  yaml_node["Camera.fy"] = rectified_intrinsics.at<double>(1, 1);
-  yaml_node["Camera.cx"] = rectified_intrinsics.at<double>(0, 2);
-  yaml_node["Camera.cy"] = rectified_intrinsics.at<double>(1, 2);
-  yaml_node["Camera.focal_x_baseline"] = -rectified_intrinsics.at<double>(0, 3);
-  return std::make_shared<openvslam::config>(yaml_node);
-}
-
-CameraIntrinsics<float> get_intrinsics(const std::string &config_file_path) {
-  YAML::Node config = YAML::LoadFile(config_file_path);
-  return CameraIntrinsics<float>(config["Camera.fx"].as<float>(),
-                                 config["Camera.fy"].as<float>(),
-                                 config["Camera.cx"].as<float>(),
-                                 config["Camera.cy"].as<float>());
-}
-
-SE3<float> get_extrinsics(const std::string &config_file_path) {
-  YAML::Node config = YAML::LoadFile(config_file_path);
-  const auto m = config["Extrinsics"].as<std::vector<double>>();
-  return SE3<float>(
-    m[0], m[1], m[2], m[3],
-    m[4], m[5], m[6], m[7],
-    m[8], m[9], m[10], m[11],
-    m[12], m[13], m[14], m[15]
-  );
-}
+#include "utils/config_reader.hpp"
 
 class ImageRenderer : public RendererBase {
  public:
@@ -59,7 +29,7 @@ class ImageRenderer : public RendererBase {
        tsdf_(tsdf),
        map_publisher_(slam->get_map_publisher()),
        config_(YAML::LoadFile(config_file_path)),
-       virtual_cam_(get_intrinsics(config_file_path), 360, 640) {
+       virtual_cam_(get_intrinsics_from_file(config_file_path), 360, 640) {
     ImGuiIO &io = ImGui::GetIO();
     io.FontGlobalScale = 2;
   }
@@ -167,7 +137,7 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
                  const std::string &config_file_path) {
   // initialize TSDF
   auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
-      get_intrinsics(config_file_path), get_extrinsics(config_file_path));
+      get_intrinsics_from_file(config_file_path), get_extrinsics_from_file(config_file_path));
   SLAM->startup();
 
   ImageRenderer renderer("tsdf", SLAM, TSDF, config_file_path);
