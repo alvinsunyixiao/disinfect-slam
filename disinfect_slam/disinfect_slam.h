@@ -42,6 +42,8 @@ class DISINFSystem {
 
     std::vector<VoxelSpatialTSDF> query_tsdf(const BoundingCube<float> &volumn);
 
+    SE3<float> query_camera_pose(const int64_t timestamp);
+
     void run();
 
   private:

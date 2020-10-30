@@ -56,6 +56,10 @@ void DISINFSystem::feed_stereo_frame(const cv::Mat & img_left, const cv::Mat & i
         camera_pose_manager->register_valid_pose(timestamp, posecam_P_world);
 }
 
+SE3<float> DISINFSystem::query_camera_pose(const int64_t timestamp) {
+    return this->camera_pose_manager->query_pose(timestamp);
+}
+
 std::vector<VoxelSpatialTSDF> DISINFSystem::query_tsdf(const BoundingCube<float> &volumn) {
   return TSDF_->Query(volumn);
 }
