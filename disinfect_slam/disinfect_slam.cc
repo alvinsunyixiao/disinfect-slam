@@ -6,13 +6,13 @@ DISINFSystem::DISINFSystem(
     std::string seg_model_path,
     bool rendering_flag
 ) {
-    
+
     std::shared_ptr<openvslam::config> cfg = get_and_set_config(camera_config_path);
     SLAM_ = std::make_shared<SLAMSystem>(cfg, vocab_path);
     SEG_ = std::make_shared<inference_engine>(seg_model_path);
     TSDF_ = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
         get_intrinsics_from_file(camera_config_path), get_extrinsics_from_file(camera_config_path));
-    
+
     SLAM_->startup();
 
     camera_pose_manager = std::make_shared<pose_manager>();
@@ -54,4 +54,8 @@ void DISINFSystem::feed_stereo_frame(const cv::Mat & img_left, const cv::Mat & i
     );
     if (m.second)
         camera_pose_manager->register_valid_pose(timestamp, posecam_P_world);
+}
+
+std::vector<VoxelSpatialTSDF> DISINFSystem::query_tsdf(const BoundingCube<float> &volumn) {
+  return TSDF_->Query(volumn);
 }
