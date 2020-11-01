@@ -13,13 +13,14 @@ __global__ static void check_bound_kernel(const VoxelHashTable hash_table,
                                           int *visible_mask) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const VoxelBlock &block = hash_table.GetBlock(idx);
+  const Vector3<short> voxel_grid = block.position << BLOCK_LEN_BITS;
   visible_mask[idx] = (block.idx >= 0 &&
-      block.position.x >= volumn_grid.xmin &&
-      block.position.y >= volumn_grid.ymin &&
-      block.position.z >= volumn_grid.zmin &&
-      block.position.x + BLOCK_LEN - 1 <= volumn_grid.xmax &&
-      block.position.y + BLOCK_LEN - 1 <= volumn_grid.ymax &&
-      block.position.z + BLOCK_LEN - 1 <= volumn_grid.zmax);
+      voxel_grid.x >= volumn_grid.xmin &&
+      voxel_grid.y >= volumn_grid.ymin &&
+      voxel_grid.z >= volumn_grid.zmin &&
+      voxel_grid.x + BLOCK_LEN - 1 <= volumn_grid.xmax &&
+      voxel_grid.y + BLOCK_LEN - 1 <= volumn_grid.ymax &&
+      voxel_grid.z + BLOCK_LEN - 1 <= volumn_grid.zmax);
 }
 
 __global__ static void check_valid_kernel(const VoxelHashTable hash_table,
