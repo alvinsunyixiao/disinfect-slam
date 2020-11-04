@@ -144,6 +144,12 @@ class Vector2 {
 
   template<typename Tout>
   __device__ __host__ inline Vector2<Tout> round() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector2<Tout> floor() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector2<Tout> ceil() const;
 };
 
 template<typename T>
@@ -167,7 +173,19 @@ __device__ __host__ inline Vector2<T> operator*(const T &lhs, const Vector2<T> &
 template<>
 template<typename Tout>
 __device__ __host__ inline Vector2<Tout> Vector2<float>::round() const {
-  return Vector2<Tout>(roundf(x), roundf(y));
+  return Vector2<float>(roundf(x), roundf(y)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector2<Tout> Vector2<float>::floor() const {
+  return Vector2<float>(floorf(x), floorf(y)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector2<Tout> Vector2<float>::ceil() const {
+  return Vector2<float>(ceilf(x), ceilf(y)).cast<Tout>();
 }
 
 template<typename T>
@@ -306,6 +324,12 @@ class Vector3 {
 
   template<typename Tout>
   __device__ __host__ inline Vector3<Tout> round() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector3<Tout> floor() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector3<Tout> ceil() const;
 };
 
 template<typename T>
@@ -329,7 +353,19 @@ __device__ __host__ inline Vector3<T> operator*(const T &lhs, const Vector3<T> &
 template<>
 template<typename Tout>
 __device__ __host__ inline Vector3<Tout> Vector3<float>::round() const {
-  return Vector3<Tout>(roundf(x), roundf(y), roundf(z));
+  return Vector3<float>(roundf(x), roundf(y), roundf(z)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector3<Tout> Vector3<float>::floor() const {
+  return Vector3<float>(floorf(x), floorf(y), floorf(z)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector3<Tout> Vector3<float>::ceil() const {
+  return Vector3<float>(ceilf(x), ceilf(y), ceilf(z)).cast<Tout>();
 }
 
 template<typename T>
@@ -422,6 +458,12 @@ class Vector4 {
 
   template<typename Tout>
   __device__ __host__ inline Vector4<Tout> round() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector4<Tout> floor() const;
+
+  template<typename Tout>
+  __device__ __host__ inline Vector4<Tout> ceil() const;
 };
 
 template<typename T>
@@ -445,5 +487,17 @@ __device__ __host__ inline Vector4<T> operator*(const T &lhs, const Vector4<T> &
 template<>
 template<typename Tout>
 __device__ __host__ inline Vector4<Tout> Vector4<float>::round() const {
-  return Vector4<Tout>(roundf(x), roundf(y), roundf(z), roundf(w));
+  return Vector4<float>(roundf(x), roundf(y), roundf(z), roundf(w)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector4<Tout> Vector4<float>::floor() const {
+  return Vector4<float>(floorf(x), floorf(y), floorf(z), floorf(w)).cast<Tout>();
+}
+
+template<>
+template<typename Tout>
+__device__ __host__ inline Vector4<Tout> Vector4<float>::ceil() const {
+  return Vector4<float>(ceilf(x), ceilf(y), ceilf(z), ceilf(w)).cast<Tout>();
 }

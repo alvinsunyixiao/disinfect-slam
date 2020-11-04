@@ -40,7 +40,10 @@ class DISINFSystem {
 
     void feed_stereo_frame(const cv::Mat & img_left, const cv::Mat & img_right, int64_t timestamp);
 
-    std::vector<VoxelSpatialTSDF> query_tsdf(const BoundingCube<float> &volumn);
+    std::vector<VoxelSpatialTSDF> query_tsdf_sparse(const BoundingCube<float> &volumn);
+
+    std::vector<float> query_tsdf_dense(const BoundingCube<float> &volumn,
+                                        BoundingCube<short> *voxel_bound = nullptr);
 
     SE3<float> query_camera_pose(const int64_t timestamp);
 

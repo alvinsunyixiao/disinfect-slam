@@ -93,18 +93,37 @@ void ImageRenderer::Render() {
     ImGui::DragFloat2("x range", x_range);
     ImGui::DragFloat2("y range", y_range);
     ImGui::DragFloat2("z range", z_range);
+
+    // data saving paths
+    static char save_path[256] = "/tmp/data.bin";
+    ImGui::InputText("Path to output data", save_path, IM_ARRAYSIZE(save_path));
+    const BoundingCube<float> volumn = {
+      {x_range[0], y_range[0], z_range[0]},
+      {x_range[1], y_range[1], z_range[1]}
+    };
+
+    static int save_type;
+    ImGui::RadioButton("sparse", &save_type, 0); ImGui::SameLine();
+    ImGui::RadioButton("dense", &save_type, 1);
+
     if (ImGui::Button("Save TSDF")) {
-      const BoundingCube<float> volumn = {
-        x_range[0], x_range[1], y_range[0], y_range[1], z_range[0], z_range[1]};
       const auto st = get_timestamp<std::chrono::milliseconds>();
-      const auto voxel_pos_tsdf = tsdf_->Query(volumn);
+      std::vector<VoxelSpatialTSDF> voxel_sparse;
+      std::vector<float> voxel_dense;
+      if (save_type == 0) { voxel_sparse = tsdf_->QuerySparse(volumn); }
+      if (save_type == 1) { voxel_dense = tsdf_->QueryDense(volumn, nullptr); }
       const auto end = get_timestamp<std::chrono::milliseconds>();
       last_query_time = end - st;
-      last_query_amount = voxel_pos_tsdf.size();
-      std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
-      fout.write((char*)voxel_pos_tsdf.data(), voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
+      last_query_amount = save_type == 0 ? voxel_sparse.size() : voxel_dense.size();
+      std::ofstream fout(save_path, std::ios::out | std::ios::binary);
+      if (save_type == 0) {
+        fout.write((char*)voxel_sparse.data(), voxel_sparse.size() * sizeof(VoxelSpatialTSDF));
+      } else if (save_type == 1) {
+        fout.write((char*)voxel_dense.data(), voxel_dense.size() * sizeof(float));
+      }
       fout.close();
     }
+
     ImGui::Text("Last queried %lu voxels, took %u ms", last_query_amount, last_query_time);
     // render
     const auto st = get_timestamp<std::chrono::milliseconds>();

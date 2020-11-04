@@ -15,12 +15,12 @@ __global__ static void check_bound_kernel(const VoxelHashTable hash_table,
   const VoxelBlock &block = hash_table.GetBlock(idx);
   const Vector3<short> voxel_grid = block.position << BLOCK_LEN_BITS;
   visible_mask[idx] = (block.idx >= 0 &&
-      voxel_grid.x >= volumn_grid.xmin &&
-      voxel_grid.y >= volumn_grid.ymin &&
-      voxel_grid.z >= volumn_grid.zmin &&
-      voxel_grid.x + BLOCK_LEN - 1 <= volumn_grid.xmax &&
-      voxel_grid.y + BLOCK_LEN - 1 <= volumn_grid.ymax &&
-      voxel_grid.z + BLOCK_LEN - 1 <= volumn_grid.zmax);
+      voxel_grid.x >= volumn_grid.lower.x &&
+      voxel_grid.y >= volumn_grid.lower.y &&
+      voxel_grid.z >= volumn_grid.lower.z &&
+      voxel_grid.x + BLOCK_LEN - 1 <= volumn_grid.upper.x &&
+      voxel_grid.y + BLOCK_LEN - 1 <= volumn_grid.upper.y &&
+      voxel_grid.z + BLOCK_LEN - 1 <= volumn_grid.upper.z);
 }
 
 __global__ static void check_valid_kernel(const VoxelHashTable hash_table,
@@ -451,7 +451,7 @@ std::vector<VoxelSpatialTSDF> TSDFGrid::GatherValid() {
   return ret;
 }
 
-std::vector<VoxelSpatialTSDF> TSDFGrid::GatherVoxels(const BoundingCube<float> &volumn) {
+std::vector<VoxelSpatialTSDF> TSDFGrid::GatherVoxelsSparse(const BoundingCube<float> &volumn) {
   // convert bounds to grid coordinates
   const BoundingCube<short> volumn_grid = volumn.Scale<short>(1. / voxel_size_);
 
@@ -478,6 +478,87 @@ std::vector<VoxelSpatialTSDF> TSDFGrid::GatherVoxels(const BoundingCube<float> &
   CUDA_SAFE_CALL(cudaFree(voxel_pos_tsdf));
 
   return ret;
+}
+
+__global__ static void download_contiguous_block_kernel(const VoxelHashTable hash_table,
+                                                        const Vector3<short> offset_block,
+                                                        const Vector3<short> size_block,
+                                                        VoxelBlock *blocks) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (idx > size_block.x * size_block.y * size_block.z) { return; }
+  const Vector3<short> thread_block(idx % size_block.x,
+                                    idx / size_block.x % size_block.y,
+                                    idx / (size_block.x * size_block.y));
+  const Vector3<short> voxel_block = thread_block + offset_block;
+  const Vector3<short> voxel_grid = voxel_block << BLOCK_LEN_BITS;
+  hash_table.Retrieve<VoxelTSDF>(voxel_grid, blocks[idx]);
+}
+
+__global__ static void download_contiguous_voxel_kernel(const VoxelMemPool voxel_mem,
+                                                        const VoxelBlock *blocks,
+                                                        const BoundingCube<short> volumn_grid,
+                                                        const Vector3<short> size_grid,
+                                                        float *voxels) {
+  const Vector3<short> thread_idx(threadIdx.x, threadIdx.y, threadIdx.z);
+  const Vector3<int> voxel_grid = ((blocks[blockIdx.x].position << BLOCK_LEN_BITS) +
+                                    thread_idx - volumn_grid.lower).cast<int>();
+  const int output_idx = voxel_grid.z * size_grid.y * size_grid.x +
+                         voxel_grid.y * size_grid.x +
+                         voxel_grid.z;
+  const short flat_thread_idx = offset2index(thread_idx);
+  // valid voxel blocks
+  if (blocks[blockIdx.x].idx >= 0) {
+    voxels[output_idx] = voxel_mem.GetVoxel<VoxelTSDF>(flat_thread_idx, blocks[blockIdx.x]).tsdf;
+  }
+  // empty voxel blocks
+  else {
+    voxels[output_idx] = -1;
+  }
+}
+
+std::vector<float> TSDFGrid::GatherVoxelsContiguous(const BoundingCube<float> &volumn,
+                                                    BoundingCube<short> *voxel_bound) {
+  const Vector3<short> volumn_lower_grid = (volumn.lower / voxel_size_).floor<short>();
+  const Vector3<short> volumn_upper_grid = (volumn.upper / voxel_size_).ceil<short>();
+  const Vector3<short> volumn_lower_block = volumn_lower_grid >> BLOCK_LEN_BITS;
+  const Vector3<short> volumn_upper_block = volumn_upper_grid >> BLOCK_LEN_BITS;
+
+  // calculating bounds in voxel grid coordinate
+  const BoundingCube<short> volumn_grid(volumn_lower_block << BLOCK_LEN_BITS,
+                                        volumn_upper_block << BLOCK_LEN_BITS);
+  if (voxel_bound) { *voxel_bound = volumn_grid; }
+  const Vector3<short> volumn_size_block = volumn_upper_block - volumn_lower_block;
+  const Vector3<short> volumn_size_grid = volumn_grid.upper - volumn_grid.lower;
+
+  printf("block: %d %d %d ", volumn_size_block.x, volumn_size_block.y, volumn_size_block.z);
+  printf("grid: %d %d %d\n", volumn_size_grid.x, volumn_size_grid.y, volumn_size_grid.z);
+
+  // allocate memory buffer
+  const size_t num_blocks = volumn_size_block.x * volumn_size_block.y * volumn_size_block.z;
+  const size_t num_voxels = num_blocks * BLOCK_VOLUME;
+  float *voxel_gpu;
+  CUDA_SAFE_CALL(cudaMalloc(&voxel_gpu, num_voxels * sizeof(float)));
+  std::vector<float> voxels;
+  voxels.reserve(num_voxels);
+  voxels.resize(num_voxels);
+
+  // kernel launch
+  constexpr dim3 BLOCK_DIM(BLOCK_LEN, BLOCK_LEN, BLOCK_LEN);
+  download_contiguous_block_kernel<<<ceil(num_blocks / 512.), 512, 0, stream_>>>(
+    hash_table_, volumn_lower_block, volumn_size_block, visible_blocks_);
+  CUDA_STREAM_CHECK_ERROR(stream_);
+  download_contiguous_voxel_kernel<<<num_blocks, BLOCK_DIM, 0, stream_>>>(
+    hash_table_.mem, visible_blocks_, volumn_grid, volumn_size_grid, voxel_gpu);
+  CUDA_STREAM_CHECK_ERROR(stream_);
+
+  // copy results
+  CUDA_SAFE_CALL(cudaMemcpyAsync(
+    voxels.data(), voxel_gpu, sizeof(float) * num_voxels, cudaMemcpyDeviceToHost, stream_));
+
+  // free buffer
+  CUDA_SAFE_CALL(cudaFree(voxel_gpu));
+
+  return voxels;
 }
 
 int TSDFGrid::GatherBlock() {

@@ -10,19 +10,16 @@
 
 template <typename T>
 struct BoundingCube {
-  T xmin;
-  T xmax;
-  T ymin;
-  T ymax;
-  T zmin;
-  T zmax;
+  Vector3<T> lower;
+  Vector3<T> upper;
+
+  __host__ __device__ BoundingCube(const Vector3<T> &lower, const Vector3<T> &upper)
+    : lower(lower), upper(upper) {}
 
   template <typename Tout = T>
-  BoundingCube<Tout> Scale(T scale) const {
-    return BoundingCube<Tout>({
-      static_cast<Tout>(xmin * scale), static_cast<Tout>(xmax * scale),
-      static_cast<Tout>(ymin * scale), static_cast<Tout>(ymax * scale),
-      static_cast<Tout>(zmin * scale), static_cast<Tout>(zmax * scale)});
+  __host__ __device__ BoundingCube<Tout> Scale(T scale) const {
+    return BoundingCube<Tout>((lower * scale).template cast<Tout>(),
+                              (upper * scale).template cast<Tout>());
   }
 };
 
@@ -45,7 +42,10 @@ class TSDFGrid {
 
   std::vector<VoxelSpatialTSDF> GatherValid();
 
-  std::vector<VoxelSpatialTSDF> GatherVoxels(const BoundingCube<float> &volumn);
+  std::vector<VoxelSpatialTSDF> GatherVoxelsSparse(const BoundingCube<float> &volumn);
+
+  std::vector<float> GatherVoxelsContiguous(const BoundingCube<float> &volumn,
+                                            BoundingCube<short> *voxel_bound);
 
  protected:
   void Allocate(const cv::Mat &img_rgb, const cv::Mat &img_depth, float max_depth,

@@ -60,6 +60,12 @@ SE3<float> DISINFSystem::query_camera_pose(const int64_t timestamp) {
     return this->camera_pose_manager->query_pose(timestamp);
 }
 
-std::vector<VoxelSpatialTSDF> DISINFSystem::query_tsdf(const BoundingCube<float> &volumn) {
-  return TSDF_->Query(volumn);
+std::vector<VoxelSpatialTSDF> DISINFSystem::query_tsdf_sparse(
+    const BoundingCube<float> &volumn) {
+  return TSDF_->QuerySparse(volumn);
+}
+
+std::vector<float> DISINFSystem::query_tsdf_dense(const BoundingCube<float> &volumn,
+                                                  BoundingCube<short> *voxel_bound) {
+  return TSDF_->QueryDense(volumn, voxel_bound);
 }
