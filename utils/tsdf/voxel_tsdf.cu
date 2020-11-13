@@ -530,9 +530,6 @@ std::vector<float> TSDFGrid::GatherVoxelsContiguous(const BoundingCube<float> &v
   const Vector3<short> volumn_size_block = volumn_upper_block - volumn_lower_block;
   const Vector3<short> volumn_size_grid = volumn_grid.upper - volumn_grid.lower;
 
-  printf("block: %d %d %d ", volumn_size_block.x, volumn_size_block.y, volumn_size_block.z);
-  printf("grid: %d %d %d\n", volumn_size_grid.x, volumn_size_grid.y, volumn_size_grid.z);
-
   // allocate memory buffer
   const size_t num_blocks = volumn_size_block.x * volumn_size_block.y * volumn_size_block.z;
   const size_t num_voxels = num_blocks * BLOCK_VOLUME;
