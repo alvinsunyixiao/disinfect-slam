@@ -40,6 +40,8 @@ class TSDFGrid {
                const SE3<float> &cam_P_world,
                GLImage8UC4 *tsdf_rgba = NULL, GLImage8UC4 *tsdf_normal = NULL);
 
+  std::vector<Vector3<float>> GetMesh(const BoundingCube<float> &volumn, float cube_len);
+
   std::vector<VoxelSpatialTSDF> GatherValid();
 
   std::vector<VoxelSpatialTSDF> GatherVoxelsSparse(const BoundingCube<float> &volumn);

@@ -24,7 +24,7 @@ find_package(OpenGL REQUIRED)
 # Slam
 find_package(openvslam REQUIRED)
 find_package(Pangolin REQUIRED) # TODO(alvin): to be completely replaced by Dear ImGUI
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4 REQUIRED)
 find_package(yaml-cpp REQUIRED)
 # Zed SDK (optional)
 find_package(ZED 3 QUIET)

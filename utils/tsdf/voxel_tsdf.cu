@@ -3,6 +3,7 @@
 #include "utils/cuda/arithmetic.cuh"
 #include "utils/cuda/errors.cuh"
 #include "utils/tsdf/voxel_tsdf.cuh"
+#include "utils/tsdf/mcube_table.cuh"
 
 #define MAX_IMG_H     1920
 #define MAX_IMG_W     1080
@@ -420,6 +421,13 @@ int TSDFGrid::GatherVisible(float max_depth,
   CUDA_STREAM_CHECK_ERROR(stream_);
 
   return GatherBlock();
+}
+
+std::vector<Vector3<float>> TSDFGrid::GetMesh(const BoundingCube<float> &volumn,
+                                              float cube_len) {
+  assert(cube_len < truncation_);
+
+  return std::vector<Vector3<float>>();
 }
 
 std::vector<VoxelSpatialTSDF> TSDFGrid::GatherValid() {
