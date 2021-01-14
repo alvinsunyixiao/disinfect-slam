@@ -5,6 +5,10 @@ if (CMAKE_CUDA_COMPILER)
 
     add_executable(online online.cc)
     target_link_libraries(online
+<<<<<<< HEAD
         PRIVATE gl_utils tsdf_module slam_module popl zed_native l515 segmentation ${OpenCV_LIBS})
+=======
+        PRIVATE gl_utils tsdf_module slam_module popl zed_native l515 ${OpenCV_LIBS})
+>>>>>>> origin/master
     target_include_directories(online PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 endif ()

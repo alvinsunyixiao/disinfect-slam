@@ -12,7 +12,10 @@
 #include "cameras/zed_native.h"
 #include "modules/slam_module.h"
 #include "modules/tsdf_module.h"
+<<<<<<< HEAD
 #include "segmentation/inference.h"
+=======
+>>>>>>> origin/master
 #include "utils/time.hpp"
 #include "utils/gl/renderer_base.h"
 #include "utils/cuda/errors.cuh"
@@ -153,7 +156,10 @@ class ImageRenderer : public RendererBase {
 
 void reconstruct(const ZEDNative &zed_native, const L515 &l515,
                  const std::shared_ptr<SLAMSystem> &SLAM,
+<<<<<<< HEAD
                  const std::shared_ptr<inference_engine> &segmentation_engine,
+=======
+>>>>>>> origin/master
                  const std::string &config_file_path) {
   // initialize TSDF
   auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4, get_intrinsics(config_file_path));
@@ -182,8 +188,12 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       cv::resize(img_rgb, img_rgb, cv::Size(), .5, .5);
       cv::resize(img_depth, img_depth, cv::Size(), .5, .5);
       img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
+<<<<<<< HEAD
       std::vector<cv::Mat> prob_map = segmentation_engine->infer_one(img_rgb, false);
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth, prob_map[0], prob_map[1]);
+=======
+      TSDF->Integrate(posecam_P_world, img_rgb, img_depth);
+>>>>>>> origin/master
       spdlog::debug("[Main] Frame integration takes {} us",
           get_timestamp<std::chrono::microseconds>() - timestamp);
     }
@@ -242,8 +252,12 @@ int main(int argc, char *argv[]) {
   L515 l515;
   // initialize slam
   auto SLAM = std::make_shared<SLAMSystem>(cfg, vocab_file_path->value());
+<<<<<<< HEAD
   auto my_engine = std::make_shared<inference_engine>("/home/roger/disinfect-slam/segmentation/ht_lt.pt");
   reconstruct(zed_native, l515, SLAM, my_engine, config_file_path->value());
+=======
+  reconstruct(zed_native, l515, SLAM, config_file_path->value());
+>>>>>>> origin/master
 
   return EXIT_SUCCESS;
 }

@@ -15,6 +15,7 @@ int main() {
     image_bgr = cv::imread("/home/roger/hospital_images/24.jpg");
     cv::cvtColor(image_bgr, image_rgb, cv::COLOR_BGR2RGB);
 
+<<<<<<< HEAD
     // Test inference and uint8 conversion
     const auto start = std::chrono::steady_clock::now();
     std::vector<cv::Mat> ret_prob_map = my_engine.infer_one(image_rgb, true);
@@ -52,5 +53,8 @@ int main() {
     auto loop_total = std::chrono::duration_cast<std::chrono::milliseconds>(loop_end - loop_start).count();
     std::cout << "Loop total time (in milliseconds): " << loop_total << std::endl;
     std::cout << "Inference time per image (in milliseconds): " << ((uint32_t)loop_total / num_trials) << std::endl;
+=======
+    my_engine.infer_one(image_rgb);
+>>>>>>> origin/master
     return 0;
 }
