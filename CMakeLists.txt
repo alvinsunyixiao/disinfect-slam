@@ -32,8 +32,10 @@ find_package(ZED 3 QUIET)
 find_package(realsense2 REQUIRED)
 find_package(OpenCV REQUIRED)
 # DL Inference
-find_package(Torch REQUIRED)
-find_package(OpenCV REQUIRED)
+find_package(Torch QUIET HINTS ${CMAKE_SOURCE_DIR}/third_party/libtorch)
+if (NOT Torch_FOUND)
+    MESSAGE(WARNING "libtorch not found. Excluding DL inference engine and examples.")
+endif()
 
 # enable testing
 enable_testing()

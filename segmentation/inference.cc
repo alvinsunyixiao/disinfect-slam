@@ -24,19 +24,6 @@ cv::Mat tensor_to_mat(const torch::Tensor & my_tensor) {
     return ret;
 }
 
-// (CPU) float32 tensor to uint8 mat
-/*
-cv::Mat tensor_to_mat(const torch::Tensor & my_tensor) {
-    torch::Tensor temp_tensor;
-    temp_tensor = my_tensor.mul(255).clamp(0, 255).to(torch::kU8);
-    temp_tensor = temp_tensor.to(torch::kCPU);
-    cv::Mat ret(352, 640, CV_8UC1);
-    //copy the data from out_tensor to resultImg
-    std::memcpy((void *) ret.data, temp_tensor.data_ptr(), sizeof(torch::kU8) * temp_tensor.numel());
-    return ret;
-}
-*/
-
 inference_engine::inference_engine(const std::string & compiled_engine_path) {
     this->engine = torch::jit::load(compiled_engine_path);
     this->engine.to(torch::kCUDA);
@@ -47,8 +34,6 @@ inference_engine::inference_engine(const std::string & compiled_engine_path) {
 std::vector<cv::Mat> inference_engine::infer_one(const cv::Mat & rgb_img) {
     cv::Mat downsized_rgb_img;
     std::vector<cv::Mat> ret;
-    // image_bgr = cv::imread("/home/roger/hospital_images/24.jpg");
-    // cv::cvtColor(image_bgr, image_rgb, cv::COLOR_BGR2RGB);
     cv::resize(rgb_img, downsized_rgb_img, cv::Size(640, 352));
 
     torch::Tensor downsized_rgb_img_tensor = mat_to_tensor(downsized_rgb_img);
