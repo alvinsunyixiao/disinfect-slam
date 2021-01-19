@@ -1,9 +1,5 @@
 #include <spdlog/spdlog.h>
 
-#include <thrust/device_ptr.h>
-#include <thrust/scan.h>
-#include <thrust/system/cuda/execution_policy.h>
-
 #include "utils/cuda/arithmetic.cuh"
 #include "utils/cuda/errors.cuh"
 #include "utils/tsdf/voxel_tsdf.cuh"
@@ -322,7 +318,7 @@ TSDFGrid::TSDFGrid(float voxel_size, float truncation)
   // memory allocation
   CUDA_SAFE_CALL(cudaMalloc(&visible_mask_, sizeof(int) * NUM_ENTRY));
   CUDA_SAFE_CALL(cudaMalloc(&visible_indics_, sizeof(int) * NUM_ENTRY));
-  CUDA_SAFE_CALL(cudaMalloc(&visible_indics_aux_, sizeof(int) * SCAN_BLOCK_SIZE));
+  CUDA_SAFE_CALL(cudaMalloc(&visible_indics_aux_, sizeof(int) * NUM_ENTRY / (2 * SCAN_BLOCK_SIZE)));
   CUDA_SAFE_CALL(cudaMalloc(&visible_blocks_, sizeof(VoxelBlock) * NUM_ENTRY));
   CUDA_SAFE_CALL(cudaMalloc(&img_rgb_, sizeof(uint3) * MAX_IMG_SIZE));
   CUDA_SAFE_CALL(cudaMalloc(&img_depth_, sizeof(float) * MAX_IMG_SIZE));
@@ -442,8 +438,7 @@ int TSDFGrid::GatherBlock() {
   constexpr int GATHER_THREAD_DIM = 512;
   constexpr int GATHER_BLOCK_DIM = NUM_ENTRY / GATHER_THREAD_DIM;
   // parallel prefix sum scan
-  thrust::exclusive_scan(thrust::cuda::par.on(stream_),
-                         visible_mask_, visible_mask_ + NUM_ENTRY, visible_indics_);
+  prefix_sum<int>(visible_mask_, visible_indics_, visible_indics_aux_, NUM_ENTRY, stream_);
   // gather visible blocks into contiguous array
   gather_visible_blocks_kernel<<<GATHER_BLOCK_DIM, GATHER_THREAD_DIM, 0, stream_>>>(
     hash_table_, visible_mask_, visible_indics_, visible_blocks_);
