@@ -184,6 +184,6 @@ __device__ const VoxelBlock& VoxelHashTable::GetBlock(const int idx) const {
   return hash_table_[idx];
 }
 
-__device__ __host__ int VoxelHashTable::NumActiveBlock() const {
+__host__ int VoxelHashTable::NumActiveBlock() const {
   return NUM_BLOCK - mem.NumFreeBlocks();
 }
