@@ -1,5 +1,9 @@
 #include <spdlog/spdlog.h>
 
+#include <thrust/device_ptr.h>
+#include <thrust/scan.h>
+#include <thrust/system/cuda/execution_policy.h>
+
 #include "utils/cuda/arithmetic.cuh"
 #include "utils/cuda/errors.cuh"
 #include "utils/tsdf/voxel_tsdf.cuh"
@@ -438,7 +442,8 @@ int TSDFGrid::GatherBlock() {
   constexpr int GATHER_THREAD_DIM = 512;
   constexpr int GATHER_BLOCK_DIM = NUM_ENTRY / GATHER_THREAD_DIM;
   // parallel prefix sum scan
-  prefix_sum<int>(visible_mask_, visible_indics_, visible_indics_aux_, NUM_ENTRY, stream_);
+  thrust::exclusive_scan(thrust::cuda::par.on(stream_),
+                         visible_mask_, visible_mask_ + NUM_ENTRY, visible_indics_);
   // gather visible blocks into contiguous array
   gather_visible_blocks_kernel<<<GATHER_BLOCK_DIM, GATHER_THREAD_DIM, 0, stream_>>>(
     hash_table_, visible_mask_, visible_indics_, visible_blocks_);
