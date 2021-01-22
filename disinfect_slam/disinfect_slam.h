@@ -50,5 +50,5 @@ class DISINFSystem {
     std::shared_ptr<TSDFSystem> TSDF_;
     std::shared_ptr<ImageRenderer> RENDERER_;
 
-    std::shared_ptr<pose_manager> camera_pose_manager;
+    std::shared_ptr<pose_manager> camera_pose_manager_;
 };
