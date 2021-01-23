@@ -207,7 +207,7 @@ __global__ static void tsdf_integrate_kernel(VoxelBlock *blocks,
       const Vector3<float> rgb_combined =
         (rgb_old * weight_old + rgb_new * weight_new) / weight_combined;
       voxel_tsdf.tsdf = (voxel_tsdf.tsdf * weight_old + tsdf * weight_new) / weight_combined;
-      voxel_rgbw.weight = fminf(roundf(weight_combined), 150);
+      voxel_rgbw.weight = fminf(roundf(weight_combined), 40);
       voxel_rgbw.rgb = rgb_combined.round<unsigned char>();
       // high touch / low touch
       const float positive = expf((weight_old * logf(voxel_segm.probability) +

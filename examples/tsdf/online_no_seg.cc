@@ -34,7 +34,6 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
   std::thread t_slam([&]() {
     cv::Mat img_left, img_right;
     while (true) {
-      //cv::Mat img_left, img_right, img_rgb, img_depth;
       if (SLAM->terminate_is_requested())
         break;
       // get sensor readings
