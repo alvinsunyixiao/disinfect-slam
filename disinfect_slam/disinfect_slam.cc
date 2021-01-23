@@ -13,6 +13,8 @@ DISINFSystem::DISINFSystem(
     TSDF_ = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
         get_intrinsics_from_file(camera_config_path), get_extrinsics_from_file(camera_config_path));
     
+    depthmap_factor_ = get_depth_factor_from_file(camera_config_path);
+    
     SLAM_->startup();
 
     camera_pose_manager_ = std::make_shared<pose_manager>();
@@ -35,7 +37,7 @@ void DISINFSystem::feed_rgbd_frame(const cv::Mat & img_rgb, const cv::Mat & img_
     const SE3<float> posecam_P_world = camera_pose_manager_->query_pose(timestamp);
     cv::resize(img_rgb, my_img_rgb, cv::Size(), .5, .5);
     cv::resize(img_depth, my_img_depth, cv::Size(), .5, .5);
-    my_img_depth.convertTo(my_img_depth, CV_32FC1, 1. / 4000); // depth scale
+    my_img_depth.convertTo(my_img_depth, CV_32FC1, 1. / depthmap_factor_); // depth scale
     std::vector<cv::Mat> prob_map = SEG_->infer_one(my_img_rgb, false);
     TSDF_->Integrate(posecam_P_world, my_img_rgb, my_img_depth, prob_map[0], prob_map[1]);
 }

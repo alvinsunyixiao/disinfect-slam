@@ -51,4 +51,6 @@ class DISINFSystem {
     std::shared_ptr<ImageRenderer> RENDERER_;
 
     std::shared_ptr<pose_manager> camera_pose_manager_;
+
+    float depthmap_factor_;
 };
