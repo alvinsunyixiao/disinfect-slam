@@ -166,7 +166,7 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
                  const std::shared_ptr<SLAMSystem> &SLAM,
                  const std::string &config_file_path) {
   // initialize TSDF
-  auto TSDF = std::make_shared<TSDFSystem>(0.05, 0.3, 4,
+  auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
       get_intrinsics(config_file_path), get_extrinsics(config_file_path));
   SLAM->startup();
 
