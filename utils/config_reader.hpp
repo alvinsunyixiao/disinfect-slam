@@ -17,6 +17,11 @@ inline CameraIntrinsics<float> get_intrinsics_from_file(const std::string &confi
                                  config["Camera.cy"].as<float>());
 }
 
+inline int get_depth_factor_from_file(const std::string &config_file_path) {
+  YAML::Node config = YAML::LoadFile(config_file_path);
+  return config["depthmap_factor"].as<float>();
+}
+
 inline SE3<float> get_extrinsics_from_file(const std::string &config_file_path) {
   YAML::Node config = YAML::LoadFile(config_file_path);
   const auto m = config["Extrinsics"].as<std::vector<double>>();

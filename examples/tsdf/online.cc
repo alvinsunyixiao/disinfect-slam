@@ -34,9 +34,8 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
   auto POSE_MANAGER = std::make_shared<pose_manager>();
 
   std::thread t_slam([&]() {
-    cv::Mat img_left, img_right;
     while (true) {
-      //cv::Mat img_left, img_right, img_rgb, img_depth;
+      cv::Mat img_left, img_right;
       if (SLAM->terminate_is_requested())
         break;
       // get sensor readings
@@ -66,6 +65,8 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
       std::vector<cv::Mat> prob_map = segmentation_engine->infer_one(img_rgb, false);
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth, prob_map[0], prob_map[1]);
+      spdlog::debug("[Main] Frame integration takes {} ms",
+        get_timestamp<std::chrono::milliseconds>() - timestamp);
     }
   });
 
