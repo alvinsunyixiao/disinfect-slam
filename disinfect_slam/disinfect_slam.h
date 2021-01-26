@@ -15,6 +15,11 @@
 #include <spdlog/spdlog.h>
 #include <yaml-cpp/yaml.h>
 
+<<<<<<< HEAD
+=======
+#include "cameras/l515.h"
+#include "cameras/zed_native.h"
+>>>>>>> master
 #include "modules/slam_module.h"
 #include "modules/tsdf_module.h"
 #include "segmentation/inference.h"
