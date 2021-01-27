@@ -119,13 +119,13 @@ class ImageRenderer : public RendererBase {
       const Vector3<float> virtual_cam_T_world = virtual_cam_P_world_.GetT();
       virtual_cam_P_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_T_world - move_cam);
     }
-    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_rgba_.width) {
+    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_rgba_.GetWidth()) {
       follow_cam_ = false;
       const ImVec2 delta = ImGui::GetMouseDragDelta(0);
-      const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_rgba_.width,
-                                     delta.y / io.DisplaySize.y * tsdf_rgba_.height);
-      const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_rgba_.width,
-                                       io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.height);
+      const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
+                                     delta.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
+      const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
+                                       io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
       const Vector2<float> pos_old_img = pos_new_img - delta_img;
       const Vector3<float> pos_new_cam = intrinsics_.Inverse() * Vector3<float>(pos_new_img);
       const Vector3<float> pos_old_cam = intrinsics_.Inverse() * Vector3<float>(pos_old_img);
@@ -172,8 +172,8 @@ class ImageRenderer : public RendererBase {
       get_images_by_id(log_entry.id, depth_scale_,
                        &img_rgb_, &img_depth_, &img_ht_, &img_lt_, logdir_);
       cv::imshow("rgb", img_rgb_);
-      if (!tsdf_rgba_.height || !tsdf_rgba_.width ||
-          !tsdf_normal_.height || !tsdf_normal_.width) {
+      if (!tsdf_rgba_.GetHeight() || !tsdf_rgba_.GetWidth() ||
+          !tsdf_normal_.GetHeight() || !tsdf_normal_.GetWidth()) {
         tsdf_rgba_.BindImage(img_depth_.rows, img_depth_.cols, nullptr);
         tsdf_normal_.BindImage(img_depth_.rows, img_depth_.cols, nullptr);
       }

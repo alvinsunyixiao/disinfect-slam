@@ -23,13 +23,13 @@ void ImageRenderer::DispatchInput() {
         const Vector3<float> virtual_cam_T_world = virtual_cam_P_world_.GetT();
         virtual_cam_P_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_T_world - move_cam);
     }
-    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_normal_.width) {
+    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_normal_.GetWidth()) {
         follow_cam_ = false;
         const ImVec2 delta = ImGui::GetMouseDragDelta(0);
-        const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_normal_.width,
-                                     delta.y / io.DisplaySize.y * tsdf_normal_.height);
-        const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_normal_.width,
-                                       io.MousePos.y / io.DisplaySize.y * tsdf_normal_.height);
+        const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
+                                     delta.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
+        const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
+                                       io.MousePos.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
         const Vector2<float> pos_old_img = pos_new_img - delta_img;
         const Vector3<float> pos_new_cam = virtual_cam_.intrinsics_inv * Vector3<float>(pos_new_img);
         const Vector3<float> pos_old_cam = virtual_cam_.intrinsics_inv * Vector3<float>(pos_old_img);
@@ -75,7 +75,7 @@ void ImageRenderer::Render() {
         m(2, 0), m(2, 1), m(2, 2), m(2, 3),
         m(3, 0), m(3, 1), m(3, 2), m(3, 3)
     );
-    if (!tsdf_normal_.height || !tsdf_normal_.width) {
+    if (!tsdf_normal_.GetHeight() || !tsdf_normal_.GetWidth()) {
         tsdf_normal_.BindImage(virtual_cam_.img_h, virtual_cam_.img_w, nullptr);
     }
     if (follow_cam_) {
