@@ -49,7 +49,7 @@ class StereoLogger : public DataLogger<StereoData> {
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const StereoData &data) override {
+  void SaveData(const StereoData &data) override {
     if (data.img_left.empty() || data.img_right.empty())
       return;
 
@@ -85,13 +85,13 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       if (SLAM.terminate_is_requested())
         break;
 
-      camera->get_stereo_img(&data.img_left, &data.img_right);
+      camera->GetStereoFrame(&data.img_left, &data.img_right);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
       data.id = SLAM.feed_stereo_images(
           data.img_left, data.img_right, timestamp / 1e6);
 
-      logger.log_data(data);
+      logger.LogData(data);
     }
   });
 
@@ -108,8 +108,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
 
 std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
-  const stereo_rectifier rectifier(yaml_node);
-  const cv::Mat rectified_intrinsics = rectifier.get_rectified_intrinsics();
+  const StereoRectifier rectifier(yaml_node);
+  const cv::Mat rectified_intrinsics = rectifier.RectifiedIntrinsics();
   yaml_node["Camera.fx"] = rectified_intrinsics.at<double>(0, 0);
   yaml_node["Camera.fy"] = rectified_intrinsics.at<double>(1, 1);
   yaml_node["Camera.cx"] = rectified_intrinsics.at<double>(0, 2);

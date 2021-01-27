@@ -37,7 +37,7 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       if (SLAM->terminate_is_requested())
         break;
       // get sensor readings
-      const int64_t timestamp = zed_native.get_stereo_img(&img_left, &img_right);
+      const int64_t timestamp = zed_native.GetStereoFrame(&img_left, &img_right);
       // visual slam
       const pose_valid_tuple m = SLAM->feed_stereo_images_w_feedback(img_left, img_right, timestamp / 1e3);
       const SE3<float> posecam_P_world(
@@ -57,11 +57,11 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
       cv::Mat img_rgb, img_depth;
       if (SLAM->terminate_is_requested())
         break;
-      const int64_t timestamp = l515.get_rgbd_frame(&img_rgb, &img_depth);
+      const int64_t timestamp = l515.GetRGBDFrame(&img_rgb, &img_depth);
       const SE3<float> posecam_P_world = POSE_MANAGER->query_pose(timestamp);
       cv::resize(img_rgb, img_rgb, cv::Size(), .5, .5);
       cv::resize(img_depth, img_depth, cv::Size(), .5, .5);
-      img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.get_depth_scale());
+      img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.DepthScale());
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth);
     }
   });

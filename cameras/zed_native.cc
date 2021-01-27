@@ -7,7 +7,7 @@
 #include <opencv2/videoio.hpp>
 #include <spdlog/spdlog.h>
 
-ZEDNative::ZEDNative(const openvslam::config &cfg, int dev_id) 
+ZEDNative::ZEDNative(const openvslam::config &cfg, int dev_id)
     : rectifier_(cfg.yaml_node_), cam_model_(cfg.camera_),
       cap_(dev_id) {
   if (!cap_.isOpened()) {
@@ -23,7 +23,7 @@ ZEDNative::~ZEDNative() {
   cap_.release();
 }
 
-int64_t ZEDNative::get_stereo_img(cv::Mat *left_img, cv::Mat *right_img) const {
+int64_t ZEDNative::GetStereoFrame(cv::Mat *left_img, cv::Mat *right_img) const {
   cv::Mat raw_img;
   if (cap_.read(raw_img)) {
     rectifier_.rectify(

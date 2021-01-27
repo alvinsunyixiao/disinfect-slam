@@ -44,7 +44,7 @@ class DepthLogger : public DataLogger<DepthData> {
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const DepthData &data) override {
+  void SaveData(const DepthData &data) override {
     const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
     const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
     cv::Mat img_depth_uint16;
@@ -87,7 +87,7 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       else
         SLAM.feed_monocular_frame(data.img_rgb, timestamp / 1e6);
 
-      logger.log_data(data);
+      logger.LogData(data);
     }
 
     while (SLAM.loop_BA_is_running()) {

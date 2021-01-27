@@ -20,8 +20,8 @@ void ImageRenderer::DispatchInput() {
         follow_cam_ = false;
         const Vector3<float> move_cam(0, 0, io.MouseWheel * .1);
         const SO3<float> virtual_cam_R_world = virtual_cam_P_world_.GetR();
-        const Vector3<float> virtual_cam_T_world = virtual_cam_P_world_.GetT();
-        virtual_cam_P_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_T_world - move_cam);
+        const Vector3<float> virtual_cam_t_world = virtual_cam_P_world_.GetT();
+        virtual_cam_P_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_t_world - move_cam);
     }
     if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_normal_.GetWidth()) {
         follow_cam_ = false;

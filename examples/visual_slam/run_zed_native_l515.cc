@@ -50,7 +50,7 @@ class DepthLogger : public DataLogger<DepthData> {
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const DepthData &data) override {
+  void SaveData(const DepthData &data) override {
     const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
     const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
     cv::Mat img_depth_uint16;
@@ -85,14 +85,14 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       if (SLAM.terminate_is_requested())
         break;
 
-      zed_native.get_stereo_img(&img_left, &img_right);
-      l515.get_rgbd_frame(&data.img_rgb, &data.img_depth);
+      zed_native.GetStereoFrame(&img_left, &img_right);
+      l515.GetRGBDFrame(&data.img_rgb, &data.img_depth);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
       data.id = SLAM.feed_stereo_images(
           img_left, img_right, timestamp / 1e6);
 
-      logger.log_data(data);
+      logger.LogData(data);
     }
   });
 
@@ -109,8 +109,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
 
 std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
-  const stereo_rectifier rectifier(yaml_node);
-  const cv::Mat rectified_intrinsics = rectifier.get_rectified_intrinsics();
+  const StereoRectifier rectifier(yaml_node);
+  const cv::Mat rectified_intrinsics = rectifier.RectifiedIntrinsics();
   yaml_node["Camera.fx"] = rectified_intrinsics.at<double>(0, 0);
   yaml_node["Camera.fy"] = rectified_intrinsics.at<double>(1, 1);
   yaml_node["Camera.cx"] = rectified_intrinsics.at<double>(0, 2);

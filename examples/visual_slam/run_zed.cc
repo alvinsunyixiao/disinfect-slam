@@ -43,7 +43,7 @@ class DepthLogger : public DataLogger<DepthData> {
   std::vector<unsigned int> logged_ids;
 
  protected:
-  void save_data(const DepthData &data) override {
+  void SaveData(const DepthData &data) override {
     const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
     const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
     cv::Mat img_depth_uint16;
@@ -78,12 +78,12 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       if (SLAM.terminate_is_requested())
         break;
 
-      camera->get_stereo_img(&img_left, &img_right, &data.img_rgb, &data.img_depth);
+      camera->GetStereoAndRGBDFrame(&img_left, &img_right, &data.img_rgb, &data.img_depth);
       const auto timestamp = get_timestamp<std::chrono::microseconds>();
 
       data.id = SLAM.feed_stereo_images(img_left, img_right, timestamp / 1e6);
 
-      logger.log_data(data);
+      logger.LogData(data);
     }
 
     while (SLAM.loop_BA_is_running()) {
@@ -107,7 +107,7 @@ std::shared_ptr<openvslam::config> get_config(const std::string &config_file_pat
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
   // modify configuration based on realsense camera data
   // pre-defined stream profile
-  auto cam_config = camera.get_camera_config();
+  auto cam_config = camera.GetConfig();
   yaml_node["Camera.fps"] = cam_config.fps;
   yaml_node["Camera.cols"] = cam_config.resolution.width;
   yaml_node["Camera.rows"] = cam_config.resolution.height;
