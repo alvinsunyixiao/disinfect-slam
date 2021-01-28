@@ -63,7 +63,7 @@ jobs:
           -DG2O_USE_OPENGL=OFF \
           -DG2O_USE_OPENMP=ON \
           ..
-        make -j
+        make -j2
         make install
     - name: add system path
       run: |
