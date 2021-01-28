@@ -36,7 +36,7 @@ jobs:
         # pangolin deps
         sudo apt install -y libglew-dev libglfw3-dev python3-opencv libeigen3-dev
         # g2o deps
-        sudo apt install -y libatlas-base-dev libsuitesparse
+        sudo apt install -y libatlas-base-dev libsuitesparse-dev
         # other
         sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
     - name: local dependencies cache
