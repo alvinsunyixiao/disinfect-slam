@@ -2,7 +2,7 @@ name: ubuntu CI
 
 on:
   push:
-    branches: [ alvin/format_ci ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -29,6 +29,8 @@ jobs:
         sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         sudo apt-get update
         sudo apt-get -y install cuda-toolkit-11-0
+    - name: download dependencies
+      run: sudo apt install libglew-dev
     - name: add system path
       run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
     - name: cmake
