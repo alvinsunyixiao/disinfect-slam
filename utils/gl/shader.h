@@ -1,9 +1,9 @@
 #pragma once
 
+#include <GL/glew.h>
+
 #include <string>
 #include <unordered_map>
-
-#include <GL/glew.h>
 
 class Shader {
  public:
@@ -17,8 +17,7 @@ class Shader {
    *                        otherwise
    *                          both shaders are interpreted as shader program strings
    */
-  Shader(const std::string &vertex_shader,
-         const std::string &fragment_shader,
+  Shader(const std::string& vertex_shader, const std::string& fragment_shader,
          bool load_file = true);
 
   /**
@@ -38,13 +37,13 @@ class Shader {
 
   // TODO(alvin): extend type support when needed
   // Set uniform attributes by name
-  void SetUniform3f(const std::string &name, float x, float y, float z) const;
-  void SetUniform4f(const std::string &name, float x, float y, float z, float w) const;
+  void SetUniform3f(const std::string& name, float x, float y, float z) const;
+  void SetUniform4f(const std::string& name, float x, float y, float z, float w) const;
 
  private:
-  std::string ReadFile(const std::string &filepath);
-  GLuint CompileShader(const std::string &shader_code, GLenum shader_type);
-  GLint GetUniformLocation(const std::string &name) const;
+  std::string ReadFile(const std::string& filepath);
+  GLuint CompileShader(const std::string& shader_code, GLenum shader_type);
+  GLint GetUniformLocation(const std::string& name) const;
 
   const GLuint program_id_;
   mutable std::unordered_map<std::string, GLint> uniforms_;
