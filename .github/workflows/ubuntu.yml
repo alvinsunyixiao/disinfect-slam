@@ -39,17 +39,18 @@ jobs:
         sudo apt install -y libatlas-base-dev libsuitesparse-dev
         # other
         sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
-    - name: local dependencies cache
-      id: cache-local
-      uses: actions/cache@v2
-      with:
-        path: ~/.local
-        key: local-pkgs
+    #- name: local dependencies cache
+    #  id: cache-local
+    #  uses: actions/cache@v2
+    #  with:
+    #    path: ~/.local
+    #    key: local-pkgs
     - name: local dependencies build
       if: steps.cache-local.outputs.cache-hit != 'true'
       run: |
         # g2o
         git clone https://github.com/RainerKuemmerle/g2o.git ~/g2o && cd ~/g2o
+        mkdir build && cd build
         cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -66,13 +67,13 @@ jobs:
         make install
     - name: add system path
       run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
-    - name: cmake
-      run: |
-        mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Release ..
-    - name: format check
-      run: make check-format
-      working-directory: build
-    - name: build
-      run: make -j
-      working-directory: build
+    #- name: cmake
+    #  run: |
+    #    mkdir build && cd build
+    #    cmake -DCMAKE_BUILD_TYPE=Release ..
+    #- name: format check
+    #  run: make check-format
+    #  working-directory: build
+    #- name: build
+    #  run: make -j
+    #  working-directory: build
