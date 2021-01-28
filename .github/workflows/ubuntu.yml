@@ -15,31 +15,31 @@ jobs:
     # checkout
     - uses: actions/checkout@v2
     # cached ARM toolchain
-    - name: cache CUDA toolkit
-      id: cache-cuda
-      uses: actions/cache@v2
-      with:
-        path: /usr/local/cuda
-        key: cuda-toolkit-11-0
-    # download ARM toolchain
-    - name: download cuda-toolkit-11-0
-      if: steps.cache-cuda.outputs.cache-hit != 'true'
-      run: |
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
-        sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
-        sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
-        sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
-        sudo apt-get update
-        sudo apt-get -y install cuda-toolkit-11-0
-    - name: add system path
-      run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
-    - name: cmake
-      run: |
-        mkdir build && cd build
-        cmake -DCMAKE_BUILD_TYPE=Release ..
-    - name: format check
-      run: make check-format
-      working-directory: build
-    - name: build
-      run: make -j
-      working-directory: build
+    # - name: cache CUDA toolkit
+    #   id: cache-cuda
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: /usr/local/cuda
+    #     key: cuda-toolkit-11-0
+    # # download ARM toolchain
+    # - name: download cuda-toolkit-11-0
+    #   if: steps.cache-cuda.outputs.cache-hit != 'true'
+    #   run: |
+    #     wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/cuda-ubuntu1804.pin
+    #     sudo mv cuda-ubuntu1804.pin /etc/apt/preferences.d/cuda-repository-pin-600
+    #     sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+    #     sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
+    #     sudo apt-get update
+    #     sudo apt-get -y install cuda-toolkit-11-0
+    # - name: add system path
+    #   run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
+    # - name: cmake
+    #   run: |
+    #     mkdir build && cd build
+    #     cmake -DCMAKE_BUILD_TYPE=Release ..
+    # - name: format check
+    #   run: make check-format
+    #   working-directory: build
+    # - name: build
+    #   run: make -j
+    #   working-directory: build
