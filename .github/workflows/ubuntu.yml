@@ -66,7 +66,9 @@ jobs:
         make -j
         make install
     - name: add system path
-      run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
+      run: |
+        echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
     #- name: cmake
     #  run: |
     #    mkdir build && cd build
