@@ -178,10 +178,10 @@ class ImageRenderer : public RendererBase {
         tsdf_normal_.BindImage(img_depth_.rows, img_depth_.cols, nullptr);
       }
       cv::cvtColor(img_rgb_, img_rgb_, cv::COLOR_BGR2RGB);
-      const auto st = get_timestamp<std::chrono::milliseconds>();
+      const auto st = GetTimestamp<std::chrono::milliseconds>();
       tsdf_.Integrate(img_rgb_, img_depth_, img_ht_, img_lt_,
                       4, intrinsics_, log_entry.cam_P_world);
-      const auto end = get_timestamp<std::chrono::milliseconds>();
+      const auto end = GetTimestamp<std::chrono::milliseconds>();
       CUDA_SAFE_CALL(cudaDeviceSynchronize());
       ImGui::Text("Integration takes %lu ms", end - st);
       img_depth_.convertTo(img_depth_, CV_32FC1, 1./4);
@@ -204,10 +204,10 @@ class ImageRenderer : public RendererBase {
     // render
     if (!img_depth_.empty() && !img_rgb_.empty()) {
       const CameraParams virtual_cam(intrinsics_, img_depth_.rows, img_depth_.cols);
-      const auto st = get_timestamp<std::chrono::milliseconds>();
+      const auto st = GetTimestamp<std::chrono::milliseconds>();
       tsdf_.RayCast(10, virtual_cam, virtual_cam_P_world_, &tsdf_rgba_, &tsdf_normal_);
       CUDA_SAFE_CALL(cudaDeviceSynchronize());
-      const auto end = get_timestamp<std::chrono::milliseconds>();
+      const auto end = GetTimestamp<std::chrono::milliseconds>();
       ImGui::Text("Rendering takes %lu ms", end - st);
       static int render_mode = 1;
       ImGui::RadioButton("rgb", &render_mode, 0); ImGui::SameLine();

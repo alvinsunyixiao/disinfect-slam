@@ -96,9 +96,9 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
 
       zed_native.GetStereoFrame(&data.zed_img_left, &data.zed_img_right);
       l515.GetRGBDFrame(&data.l515_img_rgb, &data.l515_img_depth);
-      const auto timestamp = get_timestamp<std::chrono::microseconds>();
+      const auto timestamp = GetTimestamp<std::chrono::microseconds>();
 
-      data.id = SLAM.feed_stereo_images(
+      data.id = SLAM.FeedStereoImages(
           data.zed_img_left, data.zed_img_right, timestamp / 1e6);
 
       logger.LogData(data);
@@ -113,7 +113,7 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
     SLAM.save_map_database(map_db_path);
 
   const std::string traj_path = logdir + "/trajectory.txt";
-  SLAM.save_matched_trajectory(traj_path, logger.logged_ids);
+  SLAM.SaveMatchedTrajectory(traj_path, logger.logged_ids);
 }
 
 std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {

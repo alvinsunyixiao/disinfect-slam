@@ -80,10 +80,10 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
         break;
 
       camera.get_rgbd_frame(&data.img_rgb, &data.img_depth);
-      const auto timestamp = get_timestamp<std::chrono::microseconds>();
+      const auto timestamp = GetTimestamp<std::chrono::microseconds>();
 
       if (use_depth)
-        data.id = SLAM.feed_rgbd_images(data.img_rgb, data.img_depth, timestamp / 1e6);
+        data.id = SLAM.FeedRGBDImages(data.img_rgb, data.img_depth, timestamp / 1e6);
       else
         SLAM.feed_monocular_frame(data.img_rgb, timestamp / 1e6);
 
@@ -103,7 +103,7 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
     SLAM.save_map_database(map_db_path);
 
   const std::string traj_path = logdir + "/trajectory.txt";
-  SLAM.save_matched_trajectory(traj_path, logger.logged_ids);
+  SLAM.SaveMatchedTrajectory(traj_path, logger.logged_ids);
 }
 
 std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path,

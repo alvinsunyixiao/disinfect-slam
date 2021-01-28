@@ -19,7 +19,7 @@ void run(const ZEDNative &zed_native, const L515 &l515, std::shared_ptr<DISINFSy
   std::thread t_slam([&]() {
     while (true) {
       cv::Mat img_left, img_right;
-      const int64_t timestamp = zed_native.get_stereo_img(&img_left, &img_right);
+      const int64_t timestamp = zed_native.GetStereoFrame(&img_left, &img_right);
       my_sys->feed_stereo_frame(img_left, img_right, timestamp);
     }
   });
@@ -27,7 +27,7 @@ void run(const ZEDNative &zed_native, const L515 &l515, std::shared_ptr<DISINFSy
   std::thread t_tsdf([&]() {
     while (true) {
       cv::Mat img_rgb, img_depth;
-      const int64_t timestamp = l515.get_rgbd_frame(&img_rgb, &img_depth);
+      const int64_t timestamp = l515.GetRGBDFrame(&img_rgb, &img_depth);
       my_sys->feed_rgbd_frame(img_rgb, img_depth, timestamp);
     }
   });
