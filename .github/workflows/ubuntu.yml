@@ -12,14 +12,14 @@ jobs:
     steps:
     # checkout
     - uses: actions/checkout@v2
-    # cached ARM toolchain
+    # cached CUDA
     - name: cache CUDA toolkit
       id: cache-cuda
       uses: actions/cache@v2
       with:
         path: /usr/local/cuda
         key: cuda-toolkit-11-0
-    # download ARM toolchain
+    # download CUDA toolchain
     - name: download cuda-toolkit-11-0
       if: steps.cache-cuda.outputs.cache-hit != 'true'
       run: |
@@ -29,8 +29,41 @@ jobs:
         sudo add-apt-repository "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/ /"
         sudo apt-get update
         sudo apt-get -y install cuda-toolkit-11-0
-    - name: download dependencies
-      run: sudo apt install libglew-dev libglfw3-dev clang-format-10
+    - name: apt dependencies
+      run: |
+        # openvslam deps
+        sudo apt install -y python3-opencv libeigen3-dev
+        # pangolin deps
+        sudo apt install -y libglew-dev libglfw3-dev python3-opencv libeigen3-dev
+        # g2o deps
+        sudo apt install -y libatlas-base-dev libsuitesparse
+        # other
+        sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
+    - name: local dependencies cache
+      id: cache-local
+      uses: actions/cache@v2
+      with:
+        path: ~/.local
+        key: local-pkgs
+    - name: local dependencies build
+      if: steps.cache-local.outputs.cache-hit != 'true'
+      run: |
+        # g2o
+        git clone https://github.com/RainerKuemmerle/g2o.git ~/g2o && cd ~/g2o
+        cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DCMAKE_CXX_FLAGS=-std=c++11 \
+          -DBUILD_SHARED_LIBS=ON \
+          -DBUILD_UNITTESTS=OFF \
+          -DBUILD_WITH_MARCH_NATIVE=ON \
+          -DG2O_USE_CHOLMOD=OFF \
+          -DG2O_USE_CSPARSE=ON \
+          -DG2O_USE_OPENGL=OFF \
+          -DG2O_USE_OPENMP=ON \
+          ..
+        make -j
+        make install
     - name: add system path
       run: echo "/usr/local/cuda/bin" >> $GITHUB_PATH  # set envrionment variable
     - name: cmake
