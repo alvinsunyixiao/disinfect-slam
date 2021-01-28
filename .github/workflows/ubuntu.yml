@@ -2,10 +2,9 @@ name: ubuntu CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ alvin/format_ci ]
   pull_request:
-
-  workflow_dispatch:
+    branches: [ master ]
 
 jobs:
   build:
