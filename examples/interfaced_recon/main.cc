@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<openvslam::config> cfg;
   try {
-    cfg = get_and_set_config(config_file_path->value());
+    cfg = GetAndSetConfig(config_file_path->value());
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;

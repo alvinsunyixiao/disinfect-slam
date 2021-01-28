@@ -24,7 +24,7 @@ void reconstruct(const ZEDNative &zed_native, const L515 &l515,
                  const std::string &config_file_path) {
   // initialize TSDF
   auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4,
-      get_intrinsics_from_file(config_file_path), get_extrinsics_from_file(config_file_path));
+      GetIntrinsicsFromFile(config_file_path), GetExtrinsicsFromFile(config_file_path));
   SLAM->startup();
 
   ImageRenderer renderer("tsdf", SLAM, TSDF, config_file_path);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 
   std::shared_ptr<openvslam::config> cfg;
   try {
-    cfg = get_and_set_config(config_file_path->value());
+    cfg = GetAndSetConfig(config_file_path->value());
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;

@@ -12,7 +12,7 @@ ImageRenderer::ImageRenderer(const std::string &name,
        tsdf_(tsdf),
        map_publisher_(slam->get_map_publisher()),
        config_(YAML::LoadFile(config_file_path)),
-       virtual_cam_(get_intrinsics_from_file(config_file_path), 360, 640) {
+       virtual_cam_(GetIntrinsicsFromFile(config_file_path), 360, 640) {
     ImGuiIO &io = ImGui::GetIO();
     io.FontGlobalScale = 2;
 }
