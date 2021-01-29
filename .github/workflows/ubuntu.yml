@@ -44,7 +44,7 @@ jobs:
         # g2o deps
         sudo apt install -y libatlas-base-dev libsuitesparse-dev
         # other
-        sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
+        sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev librealsense2-dev
     - name: local dependencies cache
       id: cache-local
       uses: actions/cache@v2
