@@ -131,5 +131,5 @@ jobs:
       run: make check-format
       working-directory: build
     - name: build
-      run: make -j
+      run: make -j3
       working-directory: build

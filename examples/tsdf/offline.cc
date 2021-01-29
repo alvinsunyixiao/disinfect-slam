@@ -15,10 +15,6 @@
 #include <string>
 #include <vector>
 
-#include "cameras/l515.h"
-#include "cameras/zed.h"
-#include "imgui.h"
-#include "third_party/popl/include/popl.hpp"
 #include "utils/cuda/errors.cuh"
 #include "utils/cuda/vector.cuh"
 #include "utils/gl/image.h"
