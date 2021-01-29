@@ -39,12 +39,12 @@ jobs:
         sudo apt install -y libatlas-base-dev libsuitesparse-dev
         # other
         sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
-    #- name: local dependencies cache
-    #  id: cache-local
-    #  uses: actions/cache@v2
-    #  with:
-    #    path: ~/.local
-    #    key: local-pkgs
+    - name: local dependencies cache
+      id: cache-local
+      uses: actions/cache@v2
+      with:
+        path: ~/.local
+        key: local-pkgs
     - name: local dependencies build
       if: steps.cache-local.outputs.cache-hit != 'true'
       run: |
@@ -62,6 +62,32 @@ jobs:
           -DG2O_USE_CSPARSE=ON \
           -DG2O_USE_OPENGL=OFF \
           -DG2O_USE_OPENMP=ON \
+          ..
+        make -j3 && make install
+        # Pangolin viewer
+        git clone https://github.com/stevenlovegrove/Pangolin.git ~/Pangolin && cd ~/Pangolin
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
+        make -j3 && make install
+        # DBoW2
+        git clone https://github.com/shinsumicco/DBoW2.git ~/DBoW2 && cd ~/DBoW2
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
+        make -j3 && make install
+        # OpenVSLAM
+        git clone https://github.com/alvinsunyixiao/openvslam.git ~/openvslam && cd ~/openvslam
+        git checkout system_inherit
+        mkdir build && cd build
+        cmake \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=$HOME/.local \
+          -DINSTALL_PANGOLIN_VIEWER=ON \
+          -DBUILD_WITH_MARCH_NATIVE=ON \
+          -DUSE_PANGOLIN_VIEWER=ON \
+          -DUSE_SOCKET_PUBLISHER=OFF \
+          -DUSE_STACK_TRACE_LOGGER=ON \
+          -DBOW_FRAMEWORK=DBoW2 \
+          -DBUILD_TESTS=ON \
           ..
         make -j3 && make install
     - name: add system path
