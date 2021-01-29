@@ -4,7 +4,6 @@
 #include <chrono>
 #include <cinttypes>
 #include <opencv2/opencv.hpp>
-#include <opencv2/core/cuda.hpp>
 
 #include "segmentation/inference.h"
 
