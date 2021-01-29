@@ -50,7 +50,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.local
-        key: local-pkgs
+        key: local-deps-build
     - name: local dependencies build
       if: steps.cache-local.outputs.cache-hit != 'true'
       run: |
