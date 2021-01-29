@@ -3,13 +3,12 @@
 #include <cuda_runtime.h>
 #include <opencv2/opencv.hpp>
 
-#include "utils/cuda/lie_group.cuh"
 #include "utils/cuda/camera.cuh"
+#include "utils/cuda/lie_group.cuh"
 #include "utils/gl/image.h"
 #include "utils/tsdf/voxel_hash.cuh"
 
-template <typename T>
-struct BoundingCube {
+template <typename T> struct BoundingCube {
   T xmin;
   T xmax;
   T ymin;
@@ -17,21 +16,19 @@ struct BoundingCube {
   T zmin;
   T zmax;
 
-  template <typename Tout = T>
-  BoundingCube<Tout> Scale(T scale) const {
-    return BoundingCube<Tout>({
-      static_cast<Tout>(xmin * scale), static_cast<Tout>(xmax * scale),
-      static_cast<Tout>(ymin * scale), static_cast<Tout>(ymax * scale),
-      static_cast<Tout>(zmin * scale), static_cast<Tout>(zmax * scale)});
+  template <typename Tout = T> BoundingCube<Tout> Scale(T scale) const {
+    return BoundingCube<Tout>(
+        {static_cast<Tout>(xmin * scale), static_cast<Tout>(xmax * scale),
+         static_cast<Tout>(ymin * scale), static_cast<Tout>(ymax * scale),
+         static_cast<Tout>(zmin * scale), static_cast<Tout>(zmax * scale)});
   }
 };
-
 
 /**
  * @brief abstraction for TSDF grid
  */
 class TSDFGrid {
- public:
+public:
   /**
    * @brief construct a TSDF grid
    *
@@ -57,8 +54,7 @@ class TSDFGrid {
    * @param cam_P_world transformation from camera to world
    */
   void Integrate(const cv::Mat &img_rgb, const cv::Mat &img_depth,
-                 const cv::Mat &img_ht, const cv::Mat &img_lt,
-                 float max_depth,
+                 const cv::Mat &img_ht, const cv::Mat &img_lt, float max_depth,
                  const CameraIntrinsics<float> &intrinsics,
                  const SE3<float> &cam_P_world);
 
@@ -71,10 +67,9 @@ class TSDFGrid {
    * @param tsdf_rgba   optional output image for rgb visualization
    * @param tsdf_normal optinoal output image for normal shaded visualization
    */
-  void RayCast(float max_depth,
-               const CameraParams &virtual_cam,
-               const SE3<float> &cam_P_world,
-               GLImage8UC4 *tsdf_rgba = NULL, GLImage8UC4 *tsdf_normal = NULL);
+  void RayCast(float max_depth, const CameraParams &virtual_cam,
+               const SE3<float> &cam_P_world, GLImage8UC4 *tsdf_rgba = NULL,
+               GLImage8UC4 *tsdf_normal = NULL);
 
   /**
    * @brief gather all valid voxels
@@ -92,17 +87,19 @@ class TSDFGrid {
    */
   std::vector<VoxelSpatialTSDF> GatherVoxels(const BoundingCube<float> &volumn);
 
- protected:
-  void Allocate(const cv::Mat &img_rgb, const cv::Mat &img_depth, float max_depth,
-                const CameraParams &cam_params, const SE3<float> &cam_P_world);
+protected:
+  void Allocate(const cv::Mat &img_rgb, const cv::Mat &img_depth,
+                float max_depth, const CameraParams &cam_params,
+                const SE3<float> &cam_P_world);
 
-  int GatherVisible(float max_depth,
-                    const CameraParams &cam_params, const SE3<float> &cam_P_world);
+  int GatherVisible(float max_depth, const CameraParams &cam_params,
+                    const SE3<float> &cam_P_world);
 
   int GatherBlock();
 
   void UpdateTSDF(int num_visible_blocks, float max_depth,
-                  const CameraParams &cam_params, const SE3<float> &cam_P_world);
+                  const CameraParams &cam_params,
+                  const SE3<float> &cam_P_world);
 
   void SpaceCarving(int num_visible_blocks);
 
@@ -128,4 +125,3 @@ class TSDFGrid {
   uchar4 *img_tsdf_rgba_;
   uchar4 *img_tsdf_normal_;
 };
-

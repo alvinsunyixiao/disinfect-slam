@@ -11,7 +11,7 @@
 #include "utils/gl/renderer_base.h"
 
 class ImageRenderer : public RendererBase {
- public:
+public:
   /**
    * @brief rendering module constructor
    *
@@ -25,14 +25,14 @@ class ImageRenderer : public RendererBase {
                 const std::shared_ptr<TSDFSystem> &tsdf,
                 const std::string &config_file_path);
 
- protected:
+protected:
   void DispatchInput() override;
 
   void Render() override;
 
   void RenderExit() override;
 
- private:
+private:
   bool follow_cam_ = true;
   GLImage8UC4 tsdf_normal_;
   std::shared_ptr<SLAMSystem> slam_;

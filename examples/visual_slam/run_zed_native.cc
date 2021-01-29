@@ -27,13 +27,12 @@
 #include "utils/time.hpp"
 
 class StereoData {
- public:
+public:
   StereoData() = default;
 
   StereoData(const StereoData &others)
-    : img_left(others.img_left.clone()),
-      img_right(others.img_right.clone()),
-      id(others.id) {}
+      : img_left(others.img_left.clone()), img_right(others.img_right.clone()),
+        id(others.id) {}
 
   cv::Mat img_left;
   cv::Mat img_right;
@@ -41,40 +40,40 @@ class StereoData {
 };
 
 class StereoLogger : public DataLogger<StereoData> {
- public:
+public:
   StereoLogger(const std::string &logdir)
-      : logdir_(logdir),
-        DataLogger<StereoData>() {}
+      : logdir_(logdir), DataLogger<StereoData>() {}
 
   std::vector<unsigned int> logged_ids;
 
- protected:
+protected:
   void SaveData(const StereoData &data) override {
     if (data.img_left.empty() || data.img_right.empty())
       return;
 
-    const std::string left_path = logdir_ + "/" + std::to_string(data.id) + "_left.png";
-    const std::string right_path = logdir_ + "/" + std::to_string(data.id) + "_right.png";
+    const std::string left_path =
+        logdir_ + "/" + std::to_string(data.id) + "_left.png";
+    const std::string right_path =
+        logdir_ + "/" + std::to_string(data.id) + "_right.png";
 
     cv::imwrite(left_path, data.img_left);
     cv::imwrite(right_path, data.img_right);
     logged_ids.push_back(data.id);
   }
 
- private:
+private:
   const std::string logdir_;
 };
 
 void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &vocab_file_path,
-              const std::string &map_db_path,
-              const std::string &logdir,
+              const std::string &map_db_path, const std::string &logdir,
               ZEDNative *camera) {
   SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
-  pangolin_viewer::viewer viewer(
-      cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+  pangolin_viewer::viewer viewer(cfg, &SLAM, SLAM.get_frame_publisher(),
+                                 SLAM.get_map_publisher());
 
   StereoLogger logger(logdir);
 
@@ -88,8 +87,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       camera->GetStereoFrame(&data.img_left, &data.img_right);
       const auto timestamp = GetTimestamp<std::chrono::microseconds>();
 
-      data.id = SLAM.FeedStereoImages(
-          data.img_left, data.img_right, timestamp / 1e6);
+      data.id =
+          SLAM.FeedStereoImages(data.img_left, data.img_right, timestamp / 1e6);
 
       logger.LogData(data);
     }
@@ -106,7 +105,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
   SLAM.SaveMatchedTrajectory(traj_path, logger.logged_ids);
 }
 
-std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_file_path) {
+std::shared_ptr<openvslam::config>
+get_and_set_config(const std::string &config_file_path) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
   const StereoRectifier rectifier(yaml_node);
   const cv::Mat rectified_intrinsics = rectifier.RectifiedIntrinsics();
@@ -121,15 +121,15 @@ std::shared_ptr<openvslam::config> get_and_set_config(const std::string &config_
 int main(int argc, char *argv[]) {
   popl::OptionParser op("Allowed options");
   auto help = op.add<popl::Switch>("h", "help", "produce help message");
-  auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab",
-                                                          "vocabulary file path");
-  auto config_file_path = op.add<popl::Value<std::string>>("c", "config",
-                                                           "config file path");
+  auto vocab_file_path =
+      op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
+  auto config_file_path =
+      op.add<popl::Value<std::string>>("c", "config", "config file path");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
-  auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db",
-                            "path to store the map database", "");
-  auto log_dir = op.add<popl::Value<std::string>>("", "logdir",
-                            "directory to store logged data", "./log");
+  auto map_db_path = op.add<popl::Value<std::string>>(
+      "p", "map-db", "path to store the map database", "");
+  auto log_dir = op.add<popl::Value<std::string>>(
+      "", "logdir", "directory to store logged data", "./log");
   auto device_id = op.add<popl::Value<int>>("", "devid", "camera device id", 0);
 
   try {
@@ -171,8 +171,8 @@ int main(int argc, char *argv[]) {
 
   ZEDNative camera(*cfg, device_id->value());
 
-  tracking(cfg,
-      vocab_file_path->value(), map_db_path->value(), log_dir->value(), &camera);
+  tracking(cfg, vocab_file_path->value(), map_db_path->value(),
+           log_dir->value(), &camera);
 
   return EXIT_SUCCESS;
 }

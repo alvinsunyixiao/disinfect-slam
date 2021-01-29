@@ -9,8 +9,8 @@
 
 #include <openvslam/config.h>
 
-#include <sl/Camera.hpp>
 #include <opencv2/opencv.hpp>
+#include <sl/Camera.hpp>
 
 #include <popl.hpp>
 #include <spdlog/spdlog.h>
@@ -21,13 +21,12 @@
 #include "utils/time.hpp"
 
 class DepthData {
- public:
+public:
   DepthData() = default;
 
   DepthData(const DepthData &others)
-    : img_rgb(others.img_rgb.clone()),
-      img_depth(others.img_depth.clone()),
-      id(others.id) {}
+      : img_rgb(others.img_rgb.clone()), img_depth(others.img_depth.clone()),
+        id(others.id) {}
 
   cv::Mat img_rgb;
   cv::Mat img_depth;
@@ -35,17 +34,18 @@ class DepthData {
 };
 
 class DepthLogger : public DataLogger<DepthData> {
- public:
+public:
   DepthLogger(const std::string &logdir)
-      : logdir_(logdir),
-        DataLogger<DepthData>() {}
+      : logdir_(logdir), DataLogger<DepthData>() {}
 
   std::vector<unsigned int> logged_ids;
 
- protected:
+protected:
   void SaveData(const DepthData &data) override {
-    const std::string rgb_path = logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
-    const std::string depth_path = logdir_ + "/" + std::to_string(data.id) + "_depth.png";
+    const std::string rgb_path =
+        logdir_ + "/" + std::to_string(data.id) + "_rgb.png";
+    const std::string depth_path =
+        logdir_ + "/" + std::to_string(data.id) + "_depth.png";
     cv::Mat img_depth_uint16;
     data.img_depth.convertTo(img_depth_uint16, CV_16UC1);
     cv::imwrite(rgb_path, data.img_rgb);
@@ -53,20 +53,19 @@ class DepthLogger : public DataLogger<DepthData> {
     logged_ids.push_back(data.id);
   }
 
- private:
+private:
   const std::string logdir_;
 };
 
 void tracking(const std::shared_ptr<openvslam::config> &cfg,
               const std::string &vocab_file_path,
-              const std::string &map_db_path,
-              const std::string &logdir,
+              const std::string &map_db_path, const std::string &logdir,
               ZED *camera) {
   SLAMSystem SLAM(cfg, vocab_file_path);
   SLAM.startup();
 
-  pangolin_viewer::viewer viewer(
-      cfg, &SLAM, SLAM.get_frame_publisher(), SLAM.get_map_publisher());
+  pangolin_viewer::viewer viewer(cfg, &SLAM, SLAM.get_frame_publisher(),
+                                 SLAM.get_map_publisher());
 
   DepthLogger logger(logdir);
 
@@ -78,7 +77,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
       if (SLAM.terminate_is_requested())
         break;
 
-      camera->GetStereoAndRGBDFrame(&img_left, &img_right, &data.img_rgb, &data.img_depth);
+      camera->GetStereoAndRGBDFrame(&img_left, &img_right, &data.img_rgb,
+                                    &data.img_depth);
       const auto timestamp = GetTimestamp<std::chrono::microseconds>();
 
       data.id = SLAM.FeedStereoImages(img_left, img_right, timestamp / 1e6);
@@ -102,8 +102,8 @@ void tracking(const std::shared_ptr<openvslam::config> &cfg,
   SLAM.SaveMatchedTrajectory(traj_path, logger.logged_ids);
 }
 
-std::shared_ptr<openvslam::config> get_config(const std::string &config_file_path,
-                                              const ZED &camera) {
+std::shared_ptr<openvslam::config>
+get_config(const std::string &config_file_path, const ZED &camera) {
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
   // modify configuration based on realsense camera data
   // pre-defined stream profile
@@ -118,8 +118,8 @@ std::shared_ptr<openvslam::config> get_config(const std::string &config_file_pat
   yaml_node["Camera.cx"] = cam_config.calibration_parameters.left_cam.cx;
   yaml_node["Camera.cy"] = cam_config.calibration_parameters.left_cam.cy;
   yaml_node["Camera.focal_x_baseline"] =
-    cam_config.calibration_parameters.stereo_transform.getTranslation().x *
-    cam_config.calibration_parameters.left_cam.fx / 1e3; // unit [mm] to [m]
+      cam_config.calibration_parameters.stereo_transform.getTranslation().x *
+      cam_config.calibration_parameters.left_cam.fx / 1e3; // unit [mm] to [m]
   // zero camera distortion
   yaml_node["Camera.k1"] = 0;
   yaml_node["Camera.k2"] = 0;
@@ -133,15 +133,15 @@ std::shared_ptr<openvslam::config> get_config(const std::string &config_file_pat
 int main(int argc, char *argv[]) {
   popl::OptionParser op("Allowed options");
   auto help = op.add<popl::Switch>("h", "help", "produce help message");
-  auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab",
-                                                          "vocabulary file path");
-  auto config_file_path = op.add<popl::Value<std::string>>("c", "config",
-                                                           "config file path");
+  auto vocab_file_path =
+      op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
+  auto config_file_path =
+      op.add<popl::Value<std::string>>("c", "config", "config file path");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
-  auto map_db_path = op.add<popl::Value<std::string>>("p", "map-db",
-                            "path to store the map database", "");
-  auto log_dir = op.add<popl::Value<std::string>>("", "logdir",
-                            "directory to store logged data", "./log");
+  auto map_db_path = op.add<popl::Value<std::string>>(
+      "p", "map-db", "path to store the map database", "");
+  auto log_dir = op.add<popl::Value<std::string>>(
+      "", "logdir", "directory to store logged data", "./log");
   try {
     op.parse(argc, argv);
   } catch (const std::exception &e) {
@@ -179,8 +179,8 @@ int main(int argc, char *argv[]) {
     return EXIT_FAILURE;
   }
 
-  tracking(cfg,
-      vocab_file_path->value(), map_db_path->value(), log_dir->value(), &camera);
+  tracking(cfg, vocab_file_path->value(), map_db_path->value(),
+           log_dir->value(), &camera);
 
   return EXIT_SUCCESS;
 }

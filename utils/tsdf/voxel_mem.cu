@@ -14,11 +14,15 @@ VoxelMemPool::VoxelMemPool() {
   // initialize free block counter
   CUDA_SAFE_CALL(cudaMalloc(&num_free_blocks_, sizeof(int)));
   const int tmp = NUM_BLOCK;
-  CUDA_SAFE_CALL(cudaMemcpy(num_free_blocks_, &tmp, sizeof(int), cudaMemcpyHostToDevice));
+  CUDA_SAFE_CALL(
+      cudaMemcpy(num_free_blocks_, &tmp, sizeof(int), cudaMemcpyHostToDevice));
   // intialize voxel data buffer
-  CUDA_SAFE_CALL(cudaMalloc(&voxels_rgbw_, sizeof(VoxelRGBW) * NUM_BLOCK * BLOCK_VOLUME));
-  CUDA_SAFE_CALL(cudaMalloc(&voxels_tsdf_, sizeof(VoxelTSDF) * NUM_BLOCK * BLOCK_VOLUME));
-  CUDA_SAFE_CALL(cudaMalloc(&voxels_segm_, sizeof(VoxelSEGM) * NUM_BLOCK * BLOCK_VOLUME));
+  CUDA_SAFE_CALL(
+      cudaMalloc(&voxels_rgbw_, sizeof(VoxelRGBW) * NUM_BLOCK * BLOCK_VOLUME));
+  CUDA_SAFE_CALL(
+      cudaMalloc(&voxels_tsdf_, sizeof(VoxelTSDF) * NUM_BLOCK * BLOCK_VOLUME));
+  CUDA_SAFE_CALL(
+      cudaMalloc(&voxels_segm_, sizeof(VoxelSEGM) * NUM_BLOCK * BLOCK_VOLUME));
   // initialize heap array
   CUDA_SAFE_CALL(cudaMalloc(&heap_, sizeof(int) * NUM_BLOCK));
   heap_init_kernel<<<NUM_BLOCK / 256, 256>>>(heap_);
@@ -40,7 +44,7 @@ __device__ int VoxelMemPool::AquireBlock() {
 
   const VoxelBlock block(heap_[idx - 1]);
 
-  #pragma unroll
+#pragma unroll
   for (int i = 0; i < BLOCK_VOLUME; ++i) {
     VoxelRGBW &voxel_rgbw = GetVoxel<VoxelRGBW>(i, block);
     VoxelTSDF &voxel_tsdf = GetVoxel<VoxelTSDF>(i, block);
@@ -62,7 +66,7 @@ __device__ void VoxelMemPool::ReleaseBlock(const int block_idx) {
 
 __host__ int VoxelMemPool::NumFreeBlocks() const {
   int tmp;
-  CUDA_SAFE_CALL(cudaMemcpy(&tmp, num_free_blocks_, sizeof(int), cudaMemcpyDeviceToHost));
+  CUDA_SAFE_CALL(
+      cudaMemcpy(&tmp, num_free_blocks_, sizeof(int), cudaMemcpyDeviceToHost));
   return tmp;
 }
-

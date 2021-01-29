@@ -10,9 +10,8 @@
  *
  * @tparam T  type of data to be logged
  */
-template <class T>
-class DataLogger {
- public:
+template <class T> class DataLogger {
+public:
   /**
    * @brief start logging thread
    */
@@ -43,7 +42,7 @@ class DataLogger {
     data_available_ = true;
   }
 
- protected:
+protected:
   /**
    * @brief child class should implement this to serialize data to disk
    *
@@ -51,7 +50,7 @@ class DataLogger {
    */
   virtual void SaveData(const T &data) = 0;
 
- private:
+private:
   std::mutex mtx_data_;
   int write_idx_ = 0;
   bool data_available_ = false;

@@ -16,7 +16,7 @@
  * @brief base OpenGL renderer class
  */
 class RendererBase {
- public:
+public:
   /**
    * @brief create rendering window
    *
@@ -36,7 +36,7 @@ class RendererBase {
    */
   void Run();
 
- protected:
+protected:
   GLFWwindow *window_;
 
   /**
@@ -54,9 +54,10 @@ class RendererBase {
    */
   virtual void RenderExit();
 
- private:
+private:
   static void GLFWErrorHandler(int error, const char *desc);
-  static void GLErrorHandler(GLenum source, GLenum type, GLuint id, GLenum severity,
-                             GLsizei length, const GLchar *msg, const void *args);
+  static void GLErrorHandler(GLenum source, GLenum type, GLuint id,
+                             GLenum severity, GLsizei length, const GLchar *msg,
+                             const void *args);
   static bool initialized_;
 };

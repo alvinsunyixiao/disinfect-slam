@@ -1,13 +1,13 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
 #include <librealsense2/rs.hpp>
+#include <opencv2/opencv.hpp>
 
 /**
  * @brief L515 camer interface with librealsense2
  */
 class L515 {
- public:
+public:
   L515();
   ~L515();
 
@@ -38,7 +38,7 @@ class L515 {
   static const int HEIGHT = 720;
   static const int FPS = 30;
 
- private:
+private:
   rs2::config cfg_;
   rs2::pipeline pipe_;
   rs2::pipeline_profile pipe_profile_;

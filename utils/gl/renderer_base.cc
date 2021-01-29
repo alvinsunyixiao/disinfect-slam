@@ -87,8 +87,9 @@ void RendererBase::GLFWErrorHandler(int error, const char *desc) {
 #endif
 }
 
-void RendererBase::GLErrorHandler(GLenum source, GLenum type, GLuint id, GLenum severity,
-                                  GLsizei length, const GLchar *msg, const void *args) {
+void RendererBase::GLErrorHandler(GLenum source, GLenum type, GLuint id,
+                                  GLenum severity, GLsizei length,
+                                  const GLchar *msg, const void *args) {
 #ifndef NDEBUG
   (void)source;
   (void)type;
@@ -96,8 +97,7 @@ void RendererBase::GLErrorHandler(GLenum source, GLenum type, GLuint id, GLenum 
   (void)severity;
   (void)length;
   (void)args;
-  const std::string msg_str(msg, msg+length);
+  const std::string msg_str(msg, msg + length);
   spdlog::error("[GL Error] {}", msg);
 #endif
 }
-

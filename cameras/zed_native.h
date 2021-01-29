@@ -16,7 +16,7 @@
  * @brief ZED camera interface with OpenCV
  */
 class ZEDNative {
- public:
+public:
   ZEDNative(const openvslam::config &cfg, int dev_id = 0);
   ~ZEDNative();
 
@@ -28,9 +28,9 @@ class ZEDNative {
    *
    * @return timestamp in system clock
    */
-  int64_t GetStereoFrame(cv::Mat *left_img, cv::Mat* right_img) const ;
+  int64_t GetStereoFrame(cv::Mat *left_img, cv::Mat *right_img) const;
 
- private:
+private:
   const openvslam::camera::base *cam_model_;
   const StereoRectifier rectifier_;
 
