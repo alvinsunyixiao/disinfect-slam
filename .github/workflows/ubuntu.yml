@@ -115,17 +115,17 @@ jobs:
           -DBUILD_TESTS=ON \
           ..
         make -j3 && make install
-    #- name: add system path
-    #  run: |
-    #    echo "/usr/local/cuda-11.0/bin" >> $GITHUB_PATH
-    #    echo "$HOME/.local/bin" >> $GITHUB_PATH
-    #- name: cmake
-    #  run: |
-    #    mkdir build && cd build
-    #    cmake -DCMAKE_BUILD_TYPE=Release ..
-    #- name: format check
-    #  run: make check-format
-    #  working-directory: build
-    #- name: build
-    #  run: make -j
-    #  working-directory: build
+    - name: add system path
+      run: |
+        echo "/usr/local/cuda-11.0/bin" >> $GITHUB_PATH
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+    - name: cmake
+      run: |
+        mkdir build && cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+    - name: format check
+      run: make check-format
+      working-directory: build
+    - name: build
+      run: make -j
+      working-directory: build
