@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cassert>
 #include <cuda_runtime.h>
+
+#include <cassert>
 
 #include "utils/cuda/errors.cuh"
 
@@ -18,7 +19,7 @@
  * @param len     length of the input / output array
  */
 template <typename T>
-__global__ void auxiliary_sum_kernel(T *input, T *output, T *aux, int len) {
+__global__ void auxiliary_sum_kernel(T* input, T* output, T* aux, int len) {
   __shared__ T aux_offset;
 
   const int tx = threadIdx.x;
@@ -32,10 +33,8 @@ __global__ void auxiliary_sum_kernel(T *input, T *output, T *aux, int len) {
 
   __syncthreads();
 
-  if (i1 < len)
-    output[i1] = input[i1] + aux_offset;
-  if (i2 < len)
-    output[i2] = input[i2] + aux_offset;
+  if (i1 < len) output[i1] = input[i1] + aux_offset;
+  if (i2 < len) output[i2] = input[i2] + aux_offset;
 }
 
 /**
@@ -50,7 +49,7 @@ __global__ void auxiliary_sum_kernel(T *input, T *output, T *aux, int len) {
  * @param len     length of input / output array
  */
 template <typename T>
-__global__ void scan_kernel(T *input, T *output, T *auxout, int len) {
+__global__ void scan_kernel(T* input, T* output, T* auxout, int len) {
   __shared__ T buffer[SCAN_PAD(2 * SCAN_BLOCK_SIZE)];
 
   const int tx = threadIdx.x;
@@ -79,10 +78,8 @@ __global__ void scan_kernel(T *input, T *output, T *auxout, int len) {
     __syncthreads();
   }
 
-  if (i1 < len)
-    output[i1] = buffer[SCAN_PAD(tx)];
-  if (i2 < len)
-    output[i2] = buffer[SCAN_PAD(tx + SCAN_BLOCK_SIZE)];
+  if (i1 < len) output[i1] = buffer[SCAN_PAD(tx)];
+  if (i2 < len) output[i2] = buffer[SCAN_PAD(tx + SCAN_BLOCK_SIZE)];
 
   if (tx == 0 && auxout) {
     auxout[bx] = buffer[SCAN_PAD(2 * SCAN_BLOCK_SIZE - 1)];
@@ -100,20 +97,16 @@ __global__ void scan_kernel(T *input, T *output, T *auxout, int len) {
  * @param stream  optional CUDA stream
  */
 template <typename T>
-void prefix_sum(T *input, T *output, T *auxout, int len,
-                cudaStream_t stream = NULL) {
+void prefix_sum(T* input, T* output, T* auxout, int len, cudaStream_t stream = NULL) {
   // cannot handle more than (1 << 22) elements
   assert(len <= SCAN_BLOCK_SIZE * SCAN_BLOCK_SIZE * 4);
 
   const int num_aux = ceil((float)len / (2 * SCAN_BLOCK_SIZE));
 
-  scan_kernel<T>
-      <<<num_aux, SCAN_BLOCK_SIZE, 0, stream>>>(input, output, auxout, len);
+  scan_kernel<T><<<num_aux, SCAN_BLOCK_SIZE, 0, stream>>>(input, output, auxout, len);
   CUDA_STREAM_CHECK_ERROR(stream);
-  scan_kernel<T>
-      <<<1, SCAN_BLOCK_SIZE, 0, stream>>>(auxout, auxout, NULL, num_aux);
+  scan_kernel<T><<<1, SCAN_BLOCK_SIZE, 0, stream>>>(auxout, auxout, NULL, num_aux);
   CUDA_STREAM_CHECK_ERROR(stream);
-  auxiliary_sum_kernel<T>
-      <<<num_aux, SCAN_BLOCK_SIZE, 0, stream>>>(output, output, auxout, len);
+  auxiliary_sum_kernel<T><<<num_aux, SCAN_BLOCK_SIZE, 0, stream>>>(output, output, auxout, len);
   CUDA_STREAM_CHECK_ERROR(stream);
 }

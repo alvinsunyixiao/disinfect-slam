@@ -1,5 +1,6 @@
-#include <cassert>
 #include <gtest/gtest.h>
+
+#include <cassert>
 
 #include "utils/cuda/errors.cuh"
 #include "utils/tsdf/voxel_hash.cuh"
@@ -7,16 +8,12 @@
 #define MAX_BLOCKS 128
 
 class VoxelHashTest : public ::testing::Test {
-protected:
+ protected:
   VoxelHashTest() {
-    CUDA_SAFE_CALL(cudaMallocManaged(&voxel, sizeof(VoxelRGBW) * MAX_BLOCKS *
-                                                 BLOCK_VOLUME));
-    CUDA_SAFE_CALL(
-        cudaMallocManaged(&voxel_block, sizeof(VoxelBlock) * MAX_BLOCKS));
-    CUDA_SAFE_CALL(cudaMallocManaged(&point, sizeof(Vector3<short>) *
-                                                 MAX_BLOCKS * BLOCK_VOLUME));
-    CUDA_SAFE_CALL(
-        cudaMallocManaged(&block_pos, sizeof(Vector3<short>) * MAX_BLOCKS));
+    CUDA_SAFE_CALL(cudaMallocManaged(&voxel, sizeof(VoxelRGBW) * MAX_BLOCKS * BLOCK_VOLUME));
+    CUDA_SAFE_CALL(cudaMallocManaged(&voxel_block, sizeof(VoxelBlock) * MAX_BLOCKS));
+    CUDA_SAFE_CALL(cudaMallocManaged(&point, sizeof(Vector3<short>) * MAX_BLOCKS * BLOCK_VOLUME));
+    CUDA_SAFE_CALL(cudaMallocManaged(&block_pos, sizeof(Vector3<short>) * MAX_BLOCKS));
   }
 
   ~VoxelHashTest() {
@@ -28,29 +25,28 @@ protected:
   }
 
   VoxelHashTable voxel_hash_table;
-  VoxelRGBW *voxel;
-  VoxelBlock *voxel_block;
-  Vector3<short> *point;
-  Vector3<short> *block_pos;
+  VoxelRGBW* voxel;
+  VoxelBlock* voxel_block;
+  Vector3<short>* point;
+  Vector3<short>* block_pos;
 };
 
-__global__ void Allocate(VoxelHashTable hash_table, Vector3<short> *block_pos) {
+__global__ void Allocate(VoxelHashTable hash_table, Vector3<short>* block_pos) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   hash_table.Allocate(block_pos[idx]);
 }
 
-__global__ void Retrieve(VoxelHashTable hash_table, const Vector3<short> *point,
-                         VoxelRGBW *voxel, VoxelBlock *voxel_block) {
+__global__ void Retrieve(VoxelHashTable hash_table, const Vector3<short>* point, VoxelRGBW* voxel,
+                         VoxelBlock* voxel_block) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   voxel[idx] = hash_table.Retrieve<VoxelRGBW>(point[idx], voxel_block[idx]);
 }
 
-__global__ void Assignment(VoxelHashTable hash_table,
-                           const Vector3<short> *point, VoxelRGBW *voxel) {
+__global__ void Assignment(VoxelHashTable hash_table, const Vector3<short>* point,
+                           VoxelRGBW* voxel) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   VoxelBlock block;
-  VoxelRGBW *voxel_old =
-      hash_table.RetrieveMutable<VoxelRGBW>(point[idx], block);
+  VoxelRGBW* voxel_old = hash_table.RetrieveMutable<VoxelRGBW>(point[idx], block);
   assert(voxel_old != NULL);
   *voxel_old = voxel[idx];
 }
@@ -74,7 +70,7 @@ TEST_F(VoxelHashTest, Single) {
   *block_pos = Vector3<short>(0);
   Allocate<<<1, 1>>>(voxel_hash_table, block_pos);
   CUDA_CHECK_ERROR;
-  voxel_block->offset = 0; // reset cache after re allocation
+  voxel_block->offset = 0;  // reset cache after re allocation
   for (unsigned char i = 0; i < BLOCK_LEN; ++i) {
     *point = {0, 0, i};
     *voxel = {{i, i, i}, i};
@@ -156,7 +152,7 @@ TEST_F(VoxelHashTest, Collision) {
   EXPECT_EQ(voxel_hash_table.NumActiveBlock(), 4);
   // do some assignment
   for (unsigned char i = 0; i < 4; ++i) {
-    point[i] = block_pos[i] * BLOCK_LEN; // use the first point of a block
+    point[i] = block_pos[i] * BLOCK_LEN;  // use the first point of a block
     voxel[i] = {{i, i, i}, i};
   }
   Assignment<<<1, 4>>>(voxel_hash_table, point, voxel);

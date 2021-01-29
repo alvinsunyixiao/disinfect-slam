@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cassert>
 #include <cuda_runtime.h>
+
+#include <cassert>
 
 #include "utils/cuda/vector.cuh"
 #include "utils/tsdf/voxel_types.cuh"
@@ -25,8 +26,7 @@
  *
  * @return block cooridnate in integer grid
  */
-__device__ __host__ inline Vector3<short>
-PointToBlock(const Vector3<short> &point) {
+__device__ __host__ inline Vector3<short> PointToBlock(const Vector3<short>& point) {
   return point >> BLOCK_LEN_BITS;
 }
 
@@ -37,8 +37,7 @@ PointToBlock(const Vector3<short> &point) {
  *
  * @return relative voxel index in [0, BLOCK_VOLUME)
  */
-__device__ __host__ inline Vector3<short>
-PointToOffset(const Vector3<short> &point) {
+__device__ __host__ inline Vector3<short> PointToOffset(const Vector3<short>& point) {
   return point & (BLOCK_LEN - 1);
 }
 
@@ -49,10 +48,8 @@ PointToOffset(const Vector3<short> &point) {
  *
  * @return relative voxel index in [0, BLOCK_VOLUME)
  */
-__device__ __host__ inline unsigned int
-OffsetToIndex(const Vector3<short> &point_offset) {
-  return point_offset.x + point_offset.y * BLOCK_LEN +
-         point_offset.z * BLOCK_AREA;
+__device__ __host__ inline unsigned int OffsetToIndex(const Vector3<short>& point_offset) {
+  return point_offset.x + point_offset.y * BLOCK_LEN + point_offset.z * BLOCK_AREA;
 }
 
 /**
@@ -81,7 +78,7 @@ struct VoxelBlock {
 };
 
 class VoxelMemPool {
-public:
+ public:
   /**
    * @brief internal allocation of intermediate GPU buffers
    */
@@ -116,8 +113,7 @@ public:
    * @return  voxel data with Voxel type
    */
   template <typename Voxel>
-  __device__ Voxel &GetVoxel(const Vector3<short> &point,
-                             const VoxelBlock &block) const {
+  __device__ Voxel& GetVoxel(const Vector3<short>& point, const VoxelBlock& block) const {
     assert(block.idx >= 0 && block.idx < NUM_BLOCK);
     assert(PointToBlock(point) == block.position);
     const Vector3<short> offset = PointToOffset(point);
@@ -135,15 +131,15 @@ public:
    * @return  voxel data with Voxel type
    */
   template <typename Voxel>
-  __device__ Voxel &GetVoxel(const int idx, const VoxelBlock &block) const {
+  __device__ Voxel& GetVoxel(const int idx, const VoxelBlock& block) const {
     assert(idx >= 0 && idx < BLOCK_VOLUME);
-    Voxel *voxels = GetVoxelData<Voxel>();
+    Voxel* voxels = GetVoxelData<Voxel>();
     return voxels[(block.idx << BLOCK_VOLUME_BITS) + idx];
   }
 
   __host__ int NumFreeBlocks() const;
 
-private:
+ private:
   /**
    * @brief get pointer to the first voxel of this block
    *
@@ -151,28 +147,29 @@ private:
    *
    * @return pointer to the first voxel of this block
    */
-  template <typename Voxel> __device__ constexpr Voxel *GetVoxelData() const;
+  template <typename Voxel>
+  __device__ constexpr Voxel* GetVoxelData() const;
 
-  VoxelRGBW *voxels_rgbw_;
-  VoxelTSDF *voxels_tsdf_;
-  VoxelSEGM *voxels_segm_;
-  int *num_free_blocks_;
-  int *heap_;
+  VoxelRGBW* voxels_rgbw_;
+  VoxelTSDF* voxels_tsdf_;
+  VoxelSEGM* voxels_segm_;
+  int* num_free_blocks_;
+  int* heap_;
 };
 
 /* template specialization for each type of voxel */
 
 template <>
-__device__ inline VoxelRGBW *VoxelMemPool::GetVoxelData<VoxelRGBW>() const {
+__device__ inline VoxelRGBW* VoxelMemPool::GetVoxelData<VoxelRGBW>() const {
   return voxels_rgbw_;
 }
 
 template <>
-__device__ inline VoxelTSDF *VoxelMemPool::GetVoxelData<VoxelTSDF>() const {
+__device__ inline VoxelTSDF* VoxelMemPool::GetVoxelData<VoxelTSDF>() const {
   return voxels_tsdf_;
 }
 
 template <>
-__device__ inline VoxelSEGM *VoxelMemPool::GetVoxelData<VoxelSEGM>() const {
+__device__ inline VoxelSEGM* VoxelMemPool::GetVoxelData<VoxelSEGM>() const {
   return voxels_segm_;
 }

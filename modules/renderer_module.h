@@ -1,17 +1,16 @@
 #pragma once
 
-#include <string>
-
 #include <openvslam/publish/map_publisher.h>
-
 #include <yaml-cpp/yaml.h>
+
+#include <string>
 
 #include "modules/slam_module.h"
 #include "modules/tsdf_module.h"
 #include "utils/gl/renderer_base.h"
 
 class ImageRenderer : public RendererBase {
-public:
+ public:
   /**
    * @brief rendering module constructor
    *
@@ -20,19 +19,17 @@ public:
    * @param tsdf              shared pointer to a TSDF system
    * @param config_file_path  configuration file path
    */
-  ImageRenderer(const std::string &name,
-                const std::shared_ptr<SLAMSystem> &slam,
-                const std::shared_ptr<TSDFSystem> &tsdf,
-                const std::string &config_file_path);
+  ImageRenderer(const std::string& name, const std::shared_ptr<SLAMSystem>& slam,
+                const std::shared_ptr<TSDFSystem>& tsdf, const std::string& config_file_path);
 
-protected:
+ protected:
   void DispatchInput() override;
 
   void Render() override;
 
   void RenderExit() override;
 
-private:
+ private:
   bool follow_cam_ = true;
   GLImage8UC4 tsdf_normal_;
   std::shared_ptr<SLAMSystem> slam_;

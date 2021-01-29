@@ -1,14 +1,13 @@
+#include "renderer_base.h"
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-
 #include <spdlog/spdlog.h>
-
-#include "renderer_base.h"
 
 bool RendererBase::initialized_ = false;
 
-RendererBase::RendererBase(const std::string &name, int width, int height) {
+RendererBase::RendererBase(const std::string& name, int width, int height) {
   if (initialized_) {
     spdlog::error("singleton renderer instantiated twice!");
     exit(EXIT_FAILURE);
@@ -32,7 +31,7 @@ RendererBase::RendererBase(const std::string &name, int width, int height) {
     exit(EXIT_FAILURE);
   }
   glfwMakeContextCurrent(window_);
-  glfwSwapInterval(1); // Enable vsync
+  glfwSwapInterval(1);  // Enable vsync
   // glew init
   if (glewInit() != GLEW_OK) {
     spdlog::error("cannot initialize glew");
@@ -81,15 +80,14 @@ void RendererBase::DispatchInput() {}
 
 void RendererBase::RenderExit() {}
 
-void RendererBase::GLFWErrorHandler(int error, const char *desc) {
+void RendererBase::GLFWErrorHandler(int error, const char* desc) {
 #ifndef NDEBUG
   spdlog::error("glfw error {}: {}", error, desc);
 #endif
 }
 
-void RendererBase::GLErrorHandler(GLenum source, GLenum type, GLuint id,
-                                  GLenum severity, GLsizei length,
-                                  const GLchar *msg, const void *args) {
+void RendererBase::GLErrorHandler(GLenum source, GLenum type, GLuint id, GLenum severity,
+                                  GLsizei length, const GLchar* msg, const void* args) {
 #ifndef NDEBUG
   (void)source;
   (void)type;

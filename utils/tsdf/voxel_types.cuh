@@ -1,30 +1,30 @@
 #pragma once
 
-#include "utils/cuda/vector.cuh"
 #include <cuda_runtime.h>
+
+#include "utils/cuda/vector.cuh"
 
 /**
  * @brief voxel data packed with RGB and TSDF weight
  */
 class VoxelRGBW {
-public:
+ public:
   Vector3<unsigned char> rgb;
   unsigned char weight;
 
-public:
+ public:
   __device__ __host__ VoxelRGBW();
-  __device__ __host__ VoxelRGBW(const Vector3<unsigned char> &rgb,
-                                const unsigned char weight);
+  __device__ __host__ VoxelRGBW(const Vector3<unsigned char>& rgb, const unsigned char weight);
 };
 
 /**
  * @brief voxel data of tsdf value
  */
 class VoxelTSDF {
-public:
+ public:
   float tsdf;
 
-public:
+ public:
   __device__ __host__ VoxelTSDF();
   __device__ __host__ VoxelTSDF(float tsdf);
 };
@@ -33,10 +33,10 @@ public:
  * @brief voxel data of segmentation probabilities
  */
 class VoxelSEGM {
-public:
+ public:
   float probability;
 
-public:
+ public:
   __device__ __host__ VoxelSEGM();
   __device__ __host__ VoxelSEGM(float probability);
 };
@@ -45,13 +45,12 @@ public:
  * @brief voxel data of spatial location and tsdf value
  */
 class VoxelSpatialTSDF {
-public:
+ public:
   Vector3<float> position;
   float tsdf;
 
-public:
+ public:
   __device__ __host__ VoxelSpatialTSDF();
-  __device__ __host__ VoxelSpatialTSDF(const Vector3<float> &position);
-  __device__ __host__ VoxelSpatialTSDF(const Vector3<float> &position,
-                                       float tsdf);
+  __device__ __host__ VoxelSpatialTSDF(const Vector3<float>& position);
+  __device__ __host__ VoxelSpatialTSDF(const Vector3<float>& position, float tsdf);
 };

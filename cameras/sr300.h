@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 class SR300 {
-public:
+ public:
   SR300();
   ~SR300();
 
@@ -12,7 +12,7 @@ public:
 
   rs2_intrinsics get_camera_intrinsics() const;
 
-  void get_rgbd_frame(cv::Mat *color_img, cv::Mat *depth_img) const;
+  void get_rgbd_frame(cv::Mat* color_img, cv::Mat* depth_img) const;
 
   void set_depth_sensor_option(const rs2_option option, const float value);
 
@@ -20,7 +20,7 @@ public:
   static const int HEIGHT = 480;
   static const int FPS = 30;
 
-private:
+ private:
   rs2::config cfg_;
   rs2::pipeline pipe_;
   rs2::pipeline_profile pipe_profile_;

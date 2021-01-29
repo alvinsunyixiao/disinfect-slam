@@ -7,7 +7,7 @@
  * @brief L515 camer interface with librealsense2
  */
 class L515 {
-public:
+ public:
   L515();
   ~L515();
 
@@ -24,7 +24,7 @@ public:
    *
    * @return timestamp in system clock
    */
-  int64_t GetRGBDFrame(cv::Mat *color_img, cv::Mat *depth_img) const;
+  int64_t GetRGBDFrame(cv::Mat* color_img, cv::Mat* depth_img) const;
 
   /**
    * @brief set capture properties through librealsense
@@ -38,7 +38,7 @@ public:
   static const int HEIGHT = 720;
   static const int FPS = 30;
 
-private:
+ private:
   rs2::config cfg_;
   rs2::pipeline pipe_;
   rs2::pipeline_profile pipe_profile_;

@@ -1,60 +1,51 @@
 #include "modules/renderer_module.h"
+
 #include "utils/config_reader.hpp"
 #include "utils/cuda/errors.cuh"
 #include "utils/time.hpp"
 
-ImageRenderer::ImageRenderer(const std::string &name,
-                             const std::shared_ptr<SLAMSystem> &slam,
-                             const std::shared_ptr<TSDFSystem> &tsdf,
-                             const std::string &config_file_path)
-    : RendererBase(name), slam_(slam), tsdf_(tsdf),
+ImageRenderer::ImageRenderer(const std::string& name, const std::shared_ptr<SLAMSystem>& slam,
+                             const std::shared_ptr<TSDFSystem>& tsdf,
+                             const std::string& config_file_path)
+    : RendererBase(name),
+      slam_(slam),
+      tsdf_(tsdf),
       map_publisher_(slam->get_map_publisher()),
       config_(YAML::LoadFile(config_file_path)),
       virtual_cam_(GetIntrinsicsFromFile(config_file_path), 360, 640) {
-  ImGuiIO &io = ImGui::GetIO();
+  ImGuiIO& io = ImGui::GetIO();
   io.FontGlobalScale = 2;
 }
 
 void ImageRenderer::DispatchInput() {
-  ImGuiIO &io = ImGui::GetIO();
+  ImGuiIO& io = ImGui::GetIO();
   if (io.MouseWheel != 0) {
     follow_cam_ = false;
     const Vector3<float> move_cam(0, 0, io.MouseWheel * .1);
     const SO3<float> virtual_cam_R_world = virtual_cam_T_world_.GetR();
     const Vector3<float> virtual_cam_t_world = virtual_cam_T_world_.GetT();
-    virtual_cam_T_world_ =
-        SE3<float>(virtual_cam_R_world, virtual_cam_t_world - move_cam);
+    virtual_cam_T_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_t_world - move_cam);
   }
-  if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) &&
-      tsdf_normal_.GetWidth()) {
+  if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_normal_.GetWidth()) {
     follow_cam_ = false;
     const ImVec2 delta = ImGui::GetMouseDragDelta(0);
-    const Vector2<float> delta_img(
-        delta.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
-        delta.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
-    const Vector2<float> pos_new_img(
-        io.MousePos.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
-        io.MousePos.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
+    const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
+                                   delta.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
+    const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
+                                     io.MousePos.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
     const Vector2<float> pos_old_img = pos_new_img - delta_img;
-    const Vector3<float> pos_new_cam =
-        virtual_cam_.intrinsics_inv * Vector3<float>(pos_new_img);
-    const Vector3<float> pos_old_cam =
-        virtual_cam_.intrinsics_inv * Vector3<float>(pos_old_img);
-    const Vector3<float> pos_new_norm_cam =
-        pos_new_cam / sqrt(pos_new_cam.dot(pos_new_cam));
-    const Vector3<float> pos_old_norm_cam =
-        pos_old_cam / sqrt(pos_old_cam.dot(pos_old_cam));
-    const Vector3<float> rot_axis_cross_cam =
-        pos_new_norm_cam.cross(pos_old_norm_cam);
+    const Vector3<float> pos_new_cam = virtual_cam_.intrinsics_inv * Vector3<float>(pos_new_img);
+    const Vector3<float> pos_old_cam = virtual_cam_.intrinsics_inv * Vector3<float>(pos_old_img);
+    const Vector3<float> pos_new_norm_cam = pos_new_cam / sqrt(pos_new_cam.dot(pos_new_cam));
+    const Vector3<float> pos_old_norm_cam = pos_old_cam / sqrt(pos_old_cam.dot(pos_old_cam));
+    const Vector3<float> rot_axis_cross_cam = pos_new_norm_cam.cross(pos_old_norm_cam);
     const float theta = acos(pos_new_norm_cam.dot(pos_old_norm_cam));
     const Vector3<float> w = rot_axis_cross_cam / sin(theta) * theta;
     const Matrix3<float> w_x(0, -w.z, w.y, w.z, 0, -w.x, -w.y, w.x, 0);
-    const Matrix3<float> R =
-        Matrix3<float>::Identity() + (float)sin(theta) / theta * w_x +
-        (float)(1 - cos(theta)) / (theta * theta) * w_x * w_x;
+    const Matrix3<float> R = Matrix3<float>::Identity() + (float)sin(theta) / theta * w_x +
+                             (float)(1 - cos(theta)) / (theta * theta) * w_x * w_x;
     const SE3<float> pose_cam1_T_cam2(R, Vector3<float>(0));
-    virtual_cam_T_world_ =
-        pose_cam1_T_cam2.Inverse() * virtual_cam_T_world_old_;
+    virtual_cam_T_world_ = pose_cam1_T_cam2.Inverse() * virtual_cam_T_world_old_;
   } else if (!io.WantCaptureMouse && ImGui::IsMouseDragging(2)) {
     follow_cam_ = false;
     const ImVec2 delta = ImGui::GetMouseDragDelta(2);
@@ -80,17 +71,16 @@ void ImageRenderer::Render() {
   }
   // compute
   const auto m = map_publisher_->get_current_cam_pose();
-  cam_T_world_ = SE3<float>(
-      m(0, 0), m(0, 1), m(0, 2), m(0, 3), m(1, 0), m(1, 1), m(1, 2), m(1, 3),
-      m(2, 0), m(2, 1), m(2, 2), m(2, 3), m(3, 0), m(3, 1), m(3, 2), m(3, 3));
+  cam_T_world_ = SE3<float>(m(0, 0), m(0, 1), m(0, 2), m(0, 3), m(1, 0), m(1, 1), m(1, 2), m(1, 3),
+                            m(2, 0), m(2, 1), m(2, 2), m(2, 3), m(3, 0), m(3, 1), m(3, 2), m(3, 3));
   if (!tsdf_normal_.GetHeight() || !tsdf_normal_.GetWidth()) {
     tsdf_normal_.BindImage(virtual_cam_.img_h, virtual_cam_.img_w, nullptr);
   }
   if (follow_cam_) {
     static float step = 0;
     ImGui::SliderFloat("behind actual camera", &step, 0.0f, 3.0f);
-    virtual_cam_T_world_ = SE3<float>(
-        cam_T_world_.GetR(), cam_T_world_.GetT() + Vector3<float>(0, 0, step));
+    virtual_cam_T_world_ =
+        SE3<float>(cam_T_world_.GetR(), cam_T_world_.GetT() + Vector3<float>(0, 0, step));
   }
   // bounding cube query
   static unsigned int last_query_time = 0;
@@ -110,12 +100,10 @@ void ImageRenderer::Render() {
     last_query_time = end - st;
     last_query_amount = voxel_pos_tsdf.size();
     std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
-    fout.write((char *)voxel_pos_tsdf.data(),
-               voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
+    fout.write((char*)voxel_pos_tsdf.data(), voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
     fout.close();
   }
-  ImGui::Text("Last queried %lu voxels, took %u ms", last_query_amount,
-              last_query_time);
+  ImGui::Text("Last queried %lu voxels, took %u ms", last_query_amount, last_query_time);
   // render
   const auto st = GetTimestamp<std::chrono::milliseconds>();
   tsdf_->Render(virtual_cam_, virtual_cam_T_world_, &tsdf_normal_);

@@ -17,8 +17,8 @@ ZED::~ZED() { zed_.close(); }
 
 sl::CameraConfiguration ZED::GetConfig() const { return config_; }
 
-void ZED::GetStereoAndRGBDFrame(cv::Mat *left_img, cv::Mat *right_img,
-                                cv::Mat *rgb_img, cv::Mat *depth_img) {
+void ZED::GetStereoAndRGBDFrame(cv::Mat* left_img, cv::Mat* right_img, cv::Mat* rgb_img,
+                                cv::Mat* depth_img) {
   AllocateIfNeeded(left_img, CV_8UC1);
   AllocateIfNeeded(right_img, CV_8UC1);
   AllocateIfNeeded(rgb_img, CV_8UC4);
@@ -41,9 +41,8 @@ void ZED::GetStereoAndRGBDFrame(cv::Mat *left_img, cv::Mat *right_img,
   }
 }
 
-void ZED::AllocateIfNeeded(cv::Mat *img, int type) const {
-  if (img->empty() || img->type() != type ||
-      img->cols != config_.resolution.width ||
+void ZED::AllocateIfNeeded(cv::Mat* img, int type) const {
+  if (img->empty() || img->type() != type || img->cols != config_.resolution.width ||
       img->rows != config_.resolution.height)
     *img = cv::Mat(config_.resolution.height, config_.resolution.width, type);
 }

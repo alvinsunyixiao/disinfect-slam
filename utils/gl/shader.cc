@@ -1,20 +1,16 @@
 #include "shader.h"
 
+#include <spdlog/spdlog.h>
+
 #include <fstream>
 #include <sstream>
 
-#include <spdlog/spdlog.h>
-
-Shader::Shader(const std::string &vertex_shader,
-               const std::string &fragment_shader, bool load_file)
+Shader::Shader(const std::string& vertex_shader, const std::string& fragment_shader, bool load_file)
     : program_id_(glCreateProgram()) {
-  const std::string vertex_shader_code =
-      load_file ? ReadFile(vertex_shader) : vertex_shader;
-  const std::string frag_shader_code =
-      load_file ? ReadFile(fragment_shader) : fragment_shader;
+  const std::string vertex_shader_code = load_file ? ReadFile(vertex_shader) : vertex_shader;
+  const std::string frag_shader_code = load_file ? ReadFile(fragment_shader) : fragment_shader;
   const GLuint vertex_id = CompileShader(vertex_shader_code, GL_VERTEX_SHADER);
-  const GLuint fragment_id =
-      CompileShader(frag_shader_code, GL_FRAGMENT_SHADER);
+  const GLuint fragment_id = CompileShader(frag_shader_code, GL_FRAGMENT_SHADER);
   glAttachShader(program_id_, vertex_id);
   glAttachShader(program_id_, fragment_id);
   glLinkProgram(program_id_);
@@ -34,8 +30,7 @@ void Shader::Bind() const { glUseProgram(program_id_); }
 
 void Shader::Unbind() const { glUseProgram(0); }
 
-void Shader::SetUniform4f(const std::string &name, float x, float y, float z,
-                          float w) const {
+void Shader::SetUniform4f(const std::string& name, float x, float y, float z, float w) const {
   const GLint uniform_idx = GetUniformLocation(name);
   if (uniform_idx < 0) {
     spdlog::error("Uniform name {} does not exist", name);
@@ -44,8 +39,7 @@ void Shader::SetUniform4f(const std::string &name, float x, float y, float z,
   glUniform4f(uniform_idx, x, y, z, w);
 }
 
-void Shader::SetUniform3f(const std::string &name, float x, float y,
-                          float z) const {
+void Shader::SetUniform3f(const std::string& name, float x, float y, float z) const {
   const GLint uniform_idx = GetUniformLocation(name);
   if (uniform_idx < 0) {
     spdlog::error("Uniform name {} does not exist", name);
@@ -54,7 +48,7 @@ void Shader::SetUniform3f(const std::string &name, float x, float y,
   glUniform3f(uniform_idx, x, y, z);
 }
 
-std::string Shader::ReadFile(const std::string &filepath) {
+std::string Shader::ReadFile(const std::string& filepath) {
   std::stringstream ss;
   std::ifstream file(filepath);
   ss << file.rdbuf();
@@ -62,9 +56,8 @@ std::string Shader::ReadFile(const std::string &filepath) {
   return ss.str();
 }
 
-GLuint Shader::CompileShader(const std::string &shader_code,
-                             GLenum shader_type) {
-  const char *shader_code_c_str = shader_code.c_str();
+GLuint Shader::CompileShader(const std::string& shader_code, GLenum shader_type) {
+  const char* shader_code_c_str = shader_code.c_str();
   // compile shader
   GLint success;
   const GLuint shader_id = glCreateShader(shader_type);
@@ -78,7 +71,7 @@ GLuint Shader::CompileShader(const std::string &shader_code,
   return shader_id;
 }
 
-GLint Shader::GetUniformLocation(const std::string &name) const {
+GLint Shader::GetUniformLocation(const std::string& name) const {
   if (uniforms_.find(name) == uniforms_.end()) {
     uniforms_[name] = glGetUniformLocation(program_id_, name.c_str());
   }

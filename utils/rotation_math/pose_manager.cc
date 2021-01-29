@@ -4,8 +4,7 @@ pose_manager::pose_manager() {
   // nothing
 }
 
-void pose_manager::register_valid_pose(const int64_t timestamp,
-                                       const SE3<float> pose) {
+void pose_manager::register_valid_pose(const int64_t timestamp, const SE3<float> pose) {
   std::lock_guard<std::mutex> lock(vec_lock);
   timed_pose_tuple new_observation;
   new_observation.first = timestamp;
@@ -22,8 +21,7 @@ SE3<float> pose_manager::query_pose(const int64_t timestamp) {
     return identity_se3;
   }
   // find idx
-  uint64_t max_lower_idx =
-      get_max_lower_idx(timestamp, 0, (uint64_t)(timed_pose_vec.size()));
+  uint64_t max_lower_idx = get_max_lower_idx(timestamp, 0, (uint64_t)(timed_pose_vec.size()));
   if (max_lower_idx == (uint64_t)(timed_pose_vec.size() - 1)) {
     // last element. Just use it as return
     return timed_pose_vec[max_lower_idx].second;
@@ -45,8 +43,8 @@ SE3<float> pose_manager::query_pose(const int64_t timestamp) {
   }
 }
 
-uint64_t pose_manager::get_max_lower_idx(const int64_t timestamp,
-                                         uint64_t start_idx, uint64_t end_idx) {
+uint64_t pose_manager::get_max_lower_idx(const int64_t timestamp, uint64_t start_idx,
+                                         uint64_t end_idx) {
   if ((end_idx - start_idx) < 42) {
     // brute force
     for (uint64_t i = start_idx; i < end_idx; ++i) {

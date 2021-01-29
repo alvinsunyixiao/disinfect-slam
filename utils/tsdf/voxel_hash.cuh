@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cassert>
 #include <cuda_runtime.h>
+
+#include <cassert>
 
 #include "utils/cuda/camera.cuh"
 #include "utils/cuda/lie_group.cuh"
@@ -31,7 +32,7 @@
  *
  * @return  hashed index
  */
-__device__ __host__ uint Hash(const Vector3<short> &block_pos);
+__device__ __host__ uint Hash(const Vector3<short>& block_pos);
 
 /**
  * @brief bucket lock state
@@ -45,7 +46,7 @@ enum BucketLock {
  * @brief abstraction for a hash data structure in GPU memory
  */
 class VoxelHashTable {
-public:
+ public:
   /**
    * @brief internal GPU memory allocation
    */
@@ -69,14 +70,14 @@ public:
    *
    * @param block_pos voxel block position
    */
-  __device__ void Allocate(const Vector3<short> &block_pos);
+  __device__ void Allocate(const Vector3<short>& block_pos);
 
   /**
    * @brief deallocate a block of voxel from the hash table
    *
    * @param block_pos voxel block position
    */
-  __device__ void Delete(const Vector3<short> &block_pos);
+  __device__ void Delete(const Vector3<short>& block_pos);
 
   /**
    * @brief get tsdf value of a voxel using bilinear interpolation through
@@ -88,8 +89,7 @@ public:
    *
    * @return tsdf value of a point
    */
-  __device__ float RetrieveTSDF(const Vector3<float> &point,
-                                VoxelBlock &cache) const;
+  __device__ float RetrieveTSDF(const Vector3<float>& point, VoxelBlock& cache) const;
 
   /**
    * @brief get voxel data at integer voxel coordinate
@@ -103,9 +103,8 @@ public:
    * table)
    */
   template <typename Voxel>
-  __device__ Voxel Retrieve(const Vector3<short> &point,
-                            VoxelBlock &cache) const {
-    Voxel *voxel = RetrieveMutable<Voxel>(point, cache);
+  __device__ Voxel Retrieve(const Vector3<short>& point, VoxelBlock& cache) const {
+    Voxel* voxel = RetrieveMutable<Voxel>(point, cache);
     if (voxel) {
       return *voxel;
     } else {
@@ -124,8 +123,7 @@ public:
    * @return voxel data in Voxel type (nullptr if voxel not found in hash table)
    */
   template <typename Voxel>
-  __device__ Voxel *RetrieveMutable(const Vector3<short> &point,
-                                    VoxelBlock &cache) const {
+  __device__ Voxel* RetrieveMutable(const Vector3<short>& point, VoxelBlock& cache) const {
     const Vector3<short> block_pos = PointToBlock(point);
     if (cache.position == block_pos) {
       if (cache.idx >= 0) {
@@ -139,7 +137,7 @@ public:
 // check for current bucket
 #pragma unroll
     for (int i = 0; i < NUM_ENTRY_PER_BUCKET; ++i) {
-      VoxelBlock &block = hash_table_[entry_idx + i];
+      VoxelBlock& block = hash_table_[entry_idx + i];
       if (block.position == block_pos && block.idx >= 0) {
         cache = block;
         return &(mem.GetVoxel<Voxel>(point, cache));
@@ -148,9 +146,8 @@ public:
     // traverse list
     unsigned int entry_idx_last = entry_idx + NUM_ENTRY_PER_BUCKET - 1;
     while (hash_table_[entry_idx_last].offset) {
-      entry_idx_last =
-          (entry_idx_last + hash_table_[entry_idx_last].offset) & ENTRY_MASK;
-      const VoxelBlock &block = hash_table_[entry_idx_last];
+      entry_idx_last = (entry_idx_last + hash_table_[entry_idx_last].offset) & ENTRY_MASK;
+      const VoxelBlock& block = hash_table_[entry_idx_last];
       if (block.position == block_pos && block.idx >= 0) {
         cache = block;
         return &(mem.GetVoxel<Voxel>(point, cache));
@@ -170,17 +167,17 @@ public:
    *
    * @return  voxel block meta data
    */
-  __device__ const VoxelBlock &GetBlock(const int idx) const;
+  __device__ const VoxelBlock& GetBlock(const int idx) const;
 
   /**
    * @return number of active voxel blocks
    */
   __host__ int NumActiveBlock() const;
 
-public:
+ public:
   VoxelMemPool mem;
 
-private:
-  VoxelBlock *hash_table_;
-  int *bucket_locks_;
+ private:
+  VoxelBlock* hash_table_;
+  int* bucket_locks_;
 };

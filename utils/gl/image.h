@@ -10,13 +10,13 @@
  * @brief base class for image bridging between OpenGL and CUDA
  */
 class GLImageBase {
-public:
+ public:
   /**
    * @brief base GLImage constructor
    *
    * @param fragment_shader OpenGL fragment shader program for texture rendering
    */
-  GLImageBase(const std::string &fragment_shader);
+  GLImageBase(const std::string& fragment_shader);
 
   /**
    * @brief virtual destructor for inheritance
@@ -30,7 +30,7 @@ public:
    * @param width   width of the image
    * @param data    optional pointer to a CUDA image buffer
    */
-  void BindImage(int height, int width, const void *data = nullptr);
+  void BindImage(int height, int width, const void* data = nullptr);
 
   /**
    * @brief OpenGL draw call
@@ -43,7 +43,7 @@ public:
    * @param data    pointer to a CUDA image buffer
    * @param stream  optional CUDA stream
    */
-  void LoadCuda(const void *data, cudaStream_t stream = nullptr);
+  void LoadCuda(const void* data, cudaStream_t stream = nullptr);
 
   /**
    * @return image height
@@ -55,7 +55,7 @@ public:
    */
   int GetWidth() { return width_; }
 
-protected:
+ protected:
   /**
    * @brief bind data pointer with GL Texture2D
    *
@@ -63,14 +63,14 @@ protected:
    * @param width
    * @param data
    */
-  virtual void GLTex2D(int height, int width, const void *data) const = 0;
+  virtual void GLTex2D(int height, int width, const void* data) const = 0;
 
   /**
    * @return size of a single pixel
    */
   virtual size_t ElementSize() const = 0;
 
-private:
+ private:
   Shader shader_;
   unsigned int vbo_, vao_, ebo_, texture_;
   cudaGraphicsResource_t cuda_resrc_ = nullptr;
@@ -82,11 +82,11 @@ private:
  * @brief specialized GL Image with 32-bit float single channel pixels
  */
 class GLImage32FC1 : public GLImageBase {
-public:
+ public:
   GLImage32FC1();
 
-protected:
-  void GLTex2D(int height, int width, const void *data) const override final;
+ protected:
+  void GLTex2D(int height, int width, const void* data) const override final;
 
   size_t ElementSize() const override final;
 };
@@ -95,11 +95,11 @@ protected:
  * @brief specialized GL Image with 8-bit unsigned int 4-channel pixels
  */
 class GLImage8UC4 : public GLImageBase {
-public:
+ public:
   GLImage8UC4();
 
-protected:
-  void GLTex2D(int height, int width, const void *data) const override final;
+ protected:
+  void GLTex2D(int height, int width, const void* data) const override final;
 
   size_t ElementSize() const override final;
 };

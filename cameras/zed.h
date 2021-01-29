@@ -7,7 +7,7 @@
  * @brief ZED camera interface using ZED SDK
  */
 class ZED {
-public:
+ public:
   ZED();
   ~ZED();
 
@@ -24,11 +24,11 @@ public:
    * @param rgb_img     rgb image of RGBD frame
    * @param depth_img   depth image of RGBD frame
    */
-  void GetStereoAndRGBDFrame(cv::Mat *left_img, cv::Mat *right_img,
-                             cv::Mat *rgb_img, cv::Mat *depth_img);
+  void GetStereoAndRGBDFrame(cv::Mat* left_img, cv::Mat* right_img, cv::Mat* rgb_img,
+                             cv::Mat* depth_img);
 
-private:
-  void AllocateIfNeeded(cv::Mat *img, int type) const;
+ private:
+  void AllocateIfNeeded(cv::Mat* img, int type) const;
 
   sl::Camera zed_;
   sl::CameraConfiguration config_;

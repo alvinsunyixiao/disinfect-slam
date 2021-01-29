@@ -1,19 +1,19 @@
+#include <spdlog/spdlog.h>
+#include <yaml-cpp/yaml.h>
+
 #include <chrono>
 #include <cmath>
 #include <exception>
 #include <fstream>
 #include <iostream>
 #include <memory>
-#include <string>
-#include <vector>
-
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <popl.hpp>
-#include <spdlog/spdlog.h>
-#include <yaml-cpp/yaml.h>
+#include <string>
+#include <vector>
 
 #include "cameras/l515.h"
 #include "cameras/zed.h"
@@ -31,27 +31,23 @@ struct LogEntry {
   SE3<float> cam_P_world;
 };
 
-CameraIntrinsics<float> get_intrinsics(const YAML::Node &config) {
-  return CameraIntrinsics<float>(
-      config["Camera.fx"].as<float>(), config["Camera.fy"].as<float>(),
-      config["Camera.cx"].as<float>(), config["Camera.cy"].as<float>());
+CameraIntrinsics<float> get_intrinsics(const YAML::Node& config) {
+  return CameraIntrinsics<float>(config["Camera.fx"].as<float>(), config["Camera.fy"].as<float>(),
+                                 config["Camera.cx"].as<float>(), config["Camera.cy"].as<float>());
 }
 
-SE3<float> get_extrinsics(const YAML::Node &config) {
-  const auto extrinsics =
-      config["Extrinsics"].as<std::vector<float>>(std::vector<float>());
+SE3<float> get_extrinsics(const YAML::Node& config) {
+  const auto extrinsics = config["Extrinsics"].as<std::vector<float>>(std::vector<float>());
   if (extrinsics.empty()) {
     return SE3<float>::Identity();
   }
-  return SE3<float>(extrinsics[0], extrinsics[1], extrinsics[2], extrinsics[3],
-                    extrinsics[4], extrinsics[5], extrinsics[6], extrinsics[7],
-                    extrinsics[8], extrinsics[9], extrinsics[10],
-                    extrinsics[11], extrinsics[12], extrinsics[13],
-                    extrinsics[14], extrinsics[15]);
+  return SE3<float>(extrinsics[0], extrinsics[1], extrinsics[2], extrinsics[3], extrinsics[4],
+                    extrinsics[5], extrinsics[6], extrinsics[7], extrinsics[8], extrinsics[9],
+                    extrinsics[10], extrinsics[11], extrinsics[12], extrinsics[13], extrinsics[14],
+                    extrinsics[15]);
 }
 
-const std::vector<LogEntry> parse_log_entries(const std::string &logdir,
-                                              const YAML::Node &config) {
+const std::vector<LogEntry> parse_log_entries(const std::string& logdir, const YAML::Node& config) {
   const std::string trajectory_path = logdir + "/trajectory.txt";
   const SE3<float> extrinsics = get_extrinsics(config);
   int id;
@@ -61,22 +57,19 @@ const std::vector<LogEntry> parse_log_entries(const std::string &logdir,
 
   std::vector<LogEntry> log_entries;
   std::ifstream fin(trajectory_path);
-  while (fin >> id >> m00 >> m01 >> m02 >> m03 >> m10 >> m11 >> m12 >> m13 >>
-         m20 >> m21 >> m22 >> m23) {
-    log_entries.push_back(
-        {id, extrinsics * SE3<float>(m00, m01, m02, m03, m10, m11, m12, m13,
-                                     m20, m21, m22, m23, 0, 0, 0, 1)});
+  while (fin >> id >> m00 >> m01 >> m02 >> m03 >> m10 >> m11 >> m12 >> m13 >> m20 >> m21 >> m22 >>
+         m23) {
+    log_entries.push_back({id, extrinsics * SE3<float>(m00, m01, m02, m03, m10, m11, m12, m13, m20,
+                                                       m21, m22, m23, 0, 0, 0, 1)});
   }
 
   return log_entries;
 }
 
-void get_images_by_id(int id, float depth_scale, cv::Mat *img_rgb,
-                      cv::Mat *img_depth, cv::Mat *img_ht, cv::Mat *img_lt,
-                      const std::string &logdir) {
+void get_images_by_id(int id, float depth_scale, cv::Mat* img_rgb, cv::Mat* img_depth,
+                      cv::Mat* img_ht, cv::Mat* img_lt, const std::string& logdir) {
   const std::string rgb_path = logdir + "/" + std::to_string(id) + "_rgb.png";
-  const std::string depth_path =
-      logdir + "/" + std::to_string(id) + "_depth.png";
+  const std::string depth_path = logdir + "/" + std::to_string(id) + "_depth.png";
   const std::string ht_path = logdir + "/" + std::to_string(id) + "_ht.png";
   const std::string lt_path = logdir + "/" + std::to_string(id) + "_no_ht.png";
 
@@ -89,69 +82,56 @@ void get_images_by_id(int id, float depth_scale, cv::Mat *img_rgb,
     img_ht_raw.convertTo(*img_ht, CV_32FC1, 1. / 65535);
     img_lt_raw.convertTo(*img_lt, CV_32FC1, 1. / 65535);
   } else {
-    *img_ht =
-        cv::Mat::zeros(img_depth->rows, img_depth->cols, img_depth->type());
-    *img_lt =
-        cv::Mat::ones(img_depth->rows, img_depth->cols, img_depth->type());
+    *img_ht = cv::Mat::zeros(img_depth->rows, img_depth->cols, img_depth->type());
+    *img_lt = cv::Mat::ones(img_depth->rows, img_depth->cols, img_depth->type());
   }
 }
 
 class ImageRenderer : public RendererBase {
-public:
-  ImageRenderer(const std::string &name, const std::string &logdir,
-                const YAML::Node &config)
-      : RendererBase(name), logdir_(logdir), tsdf_(0.01, 0.06),
+ public:
+  ImageRenderer(const std::string& name, const std::string& logdir, const YAML::Node& config)
+      : RendererBase(name),
+        logdir_(logdir),
+        tsdf_(0.01, 0.06),
         intrinsics_(get_intrinsics(config)),
         log_entries_(parse_log_entries(logdir, config)),
         depth_scale_(config["depthmap_factor"].as<float>()) {
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     io.FontGlobalScale = 2;
-    spdlog::debug("[RGBD Intrinsics] fx: {} fy: {} cx: {} cy: {}",
-                  intrinsics_.m00, intrinsics_.m11, intrinsics_.m02,
-                  intrinsics_.m12);
+    spdlog::debug("[RGBD Intrinsics] fx: {} fy: {} cx: {} cy: {}", intrinsics_.m00, intrinsics_.m11,
+                  intrinsics_.m02, intrinsics_.m12);
   }
 
-protected:
+ protected:
   void DispatchInput() override {
-    ImGuiIO &io = ImGui::GetIO();
+    ImGuiIO& io = ImGui::GetIO();
     if (io.MouseWheel != 0) {
       follow_cam_ = false;
       const Vector3<float> move_cam(0, 0, io.MouseWheel * .1);
       const SO3<float> virtual_cam_R_world = virtual_cam_P_world_.GetR();
       const Vector3<float> virtual_cam_t_world = virtual_cam_P_world_.GetT();
-      virtual_cam_P_world_ =
-          SE3<float>(virtual_cam_R_world, virtual_cam_t_world - move_cam);
+      virtual_cam_P_world_ = SE3<float>(virtual_cam_R_world, virtual_cam_t_world - move_cam);
     }
-    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) &&
-        tsdf_rgba_.GetWidth()) {
+    if (!io.WantCaptureMouse && ImGui::IsMouseDragging(0) && tsdf_rgba_.GetWidth()) {
       follow_cam_ = false;
       const ImVec2 delta = ImGui::GetMouseDragDelta(0);
-      const Vector2<float> delta_img(
-          delta.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
-          delta.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
-      const Vector2<float> pos_new_img(
-          io.MousePos.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
-          io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
+      const Vector2<float> delta_img(delta.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
+                                     delta.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
+      const Vector2<float> pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
+                                       io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
       const Vector2<float> pos_old_img = pos_new_img - delta_img;
-      const Vector3<float> pos_new_cam =
-          intrinsics_.Inverse() * Vector3<float>(pos_new_img);
-      const Vector3<float> pos_old_cam =
-          intrinsics_.Inverse() * Vector3<float>(pos_old_img);
-      const Vector3<float> pos_new_norm_cam =
-          pos_new_cam / sqrt(pos_new_cam.dot(pos_new_cam));
-      const Vector3<float> pos_old_norm_cam =
-          pos_old_cam / sqrt(pos_old_cam.dot(pos_old_cam));
-      const Vector3<float> rot_axis_cross_cam =
-          pos_new_norm_cam.cross(pos_old_norm_cam);
+      const Vector3<float> pos_new_cam = intrinsics_.Inverse() * Vector3<float>(pos_new_img);
+      const Vector3<float> pos_old_cam = intrinsics_.Inverse() * Vector3<float>(pos_old_img);
+      const Vector3<float> pos_new_norm_cam = pos_new_cam / sqrt(pos_new_cam.dot(pos_new_cam));
+      const Vector3<float> pos_old_norm_cam = pos_old_cam / sqrt(pos_old_cam.dot(pos_old_cam));
+      const Vector3<float> rot_axis_cross_cam = pos_new_norm_cam.cross(pos_old_norm_cam);
       const float theta = acos(pos_new_norm_cam.dot(pos_old_norm_cam));
       const Vector3<float> w = rot_axis_cross_cam / sin(theta) * theta;
       const Matrix3<float> w_x(0, -w.z, w.y, w.z, 0, -w.x, -w.y, w.x, 0);
-      const Matrix3<float> R =
-          Matrix3<float>::Identity() + (float)sin(theta) / theta * w_x +
-          (float)(1 - cos(theta)) / (theta * theta) * w_x * w_x;
+      const Matrix3<float> R = Matrix3<float>::Identity() + (float)sin(theta) / theta * w_x +
+                               (float)(1 - cos(theta)) / (theta * theta) * w_x * w_x;
       const SE3<float> pose_cam1_P_cam2(R, Vector3<float>(0));
-      virtual_cam_P_world_ =
-          pose_cam1_P_cam2.Inverse() * virtual_cam_P_world_old_;
+      virtual_cam_P_world_ = pose_cam1_P_cam2.Inverse() * virtual_cam_P_world_old_;
     } else if (!io.WantCaptureMouse && ImGui::IsMouseDragging(2)) {
       follow_cam_ = false;
       const ImVec2 delta = ImGui::GetMouseDragDelta(2);
@@ -182,13 +162,13 @@ protected:
     }
     // compute
     if (running_) {
-      const LogEntry &log_entry = log_entries_[(cnt_++) % log_entries_.size()];
+      const LogEntry& log_entry = log_entries_[(cnt_++) % log_entries_.size()];
       cam_P_world_ = log_entry.cam_P_world;
-      get_images_by_id(log_entry.id, depth_scale_, &img_rgb_, &img_depth_,
-                       &img_ht_, &img_lt_, logdir_);
+      get_images_by_id(log_entry.id, depth_scale_, &img_rgb_, &img_depth_, &img_ht_, &img_lt_,
+                       logdir_);
       cv::imshow("rgb", img_rgb_);
-      if (!tsdf_rgba_.GetHeight() || !tsdf_rgba_.GetWidth() ||
-          !tsdf_normal_.GetHeight() || !tsdf_normal_.GetWidth()) {
+      if (!tsdf_rgba_.GetHeight() || !tsdf_rgba_.GetWidth() || !tsdf_normal_.GetHeight() ||
+          !tsdf_normal_.GetWidth()) {
         tsdf_rgba_.BindImage(img_depth_.rows, img_depth_.cols, nullptr);
         tsdf_normal_.BindImage(img_depth_.rows, img_depth_.cols, nullptr);
       }
@@ -207,24 +187,20 @@ protected:
       static float step = 0;
       ImGui::SliderFloat("behind actual camera", &step, 0.0f, 3.0f);
       virtual_cam_P_world_ =
-          SE3<float>(cam_P_world_.GetR(),
-                     cam_P_world_.GetT() + Vector3<float>(0, 0, step));
+          SE3<float>(cam_P_world_.GetR(), cam_P_world_.GetT() + Vector3<float>(0, 0, step));
     }
     if (ImGui::Button("Save TSDF")) {
       const auto voxel_pos_tsdf = tsdf_.GatherValid();
       spdlog::debug("{}", voxel_pos_tsdf.size());
       std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
-      fout.write((char *)voxel_pos_tsdf.data(),
-                 voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
+      fout.write((char*)voxel_pos_tsdf.data(), voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
       fout.close();
     }
     // render
     if (!img_depth_.empty() && !img_rgb_.empty()) {
-      const CameraParams virtual_cam(intrinsics_, img_depth_.rows,
-                                     img_depth_.cols);
+      const CameraParams virtual_cam(intrinsics_, img_depth_.rows, img_depth_.cols);
       const auto st = GetTimestamp<std::chrono::milliseconds>();
-      tsdf_.RayCast(10, virtual_cam, virtual_cam_P_world_, &tsdf_rgba_,
-                    &tsdf_normal_);
+      tsdf_.RayCast(10, virtual_cam, virtual_cam_P_world_, &tsdf_rgba_, &tsdf_normal_);
       CUDA_SAFE_CALL(cudaDeviceSynchronize());
       const auto end = GetTimestamp<std::chrono::milliseconds>();
       ImGui::Text("Rendering takes %lu ms", end - st);
@@ -241,7 +217,7 @@ protected:
     ImGui::End();
   }
 
-private:
+ private:
   int cnt_ = 0;
   bool running_ = false;
   bool follow_cam_ = true;
@@ -258,19 +234,17 @@ private:
   const float depth_scale_;
 };
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   popl::OptionParser op("Allowed options");
   auto help = op.add<popl::Switch>("h", "help", "produce help message");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
-  auto logdir = op.add<popl::Value<std::string>>("", "logdir",
-                                                 "directory to the log files");
-  auto config = op.add<popl::Value<std::string>>("c", "config",
-                                                 "path to the config file");
+  auto logdir = op.add<popl::Value<std::string>>("", "logdir", "directory to the log files");
+  auto config = op.add<popl::Value<std::string>>("c", "config", "path to the config file");
 
   spdlog::set_pattern("[%Y-%m-%d %H:%M:%S.%e] %^[%L] %v%$");
   try {
     op.parse(argc, argv);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     spdlog::error(e.what());
     std::cerr << op << std::endl;
     return EXIT_FAILURE;
