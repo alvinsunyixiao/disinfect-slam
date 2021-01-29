@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
     steps:
     # checkout
     - uses: actions/checkout@v2
@@ -43,8 +43,12 @@ jobs:
         sudo apt install -y libglew-dev libglfw3-dev libeigen3-dev
         # g2o deps
         sudo apt install -y libatlas-base-dev libsuitesparse-dev
+        # librealsense
+        sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
+        sudo add-apt-repository "deb http://realsense-hw-public.s3.amazonaws.com/Debian/apt-repo bionic main" -u
+        sudo apt-get install -y librealsense2-dkms librealsense2-utils librealsense2-dev
         # other
-        sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev librealsense2-dev
+        sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev
     - name: local dependencies cache
       id: cache-local
       uses: actions/cache@v2
