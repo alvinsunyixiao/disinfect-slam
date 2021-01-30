@@ -49,7 +49,7 @@ jobs:
         sudo apt-get install -y librealsense2-dkms librealsense2-utils librealsense2-dev
         # other
         sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev clang-format-10
-    - name: local dependencies cache
+    - name: cache local dependencies
       id: cache-local
       uses: actions/cache@v2
       with:
@@ -130,6 +130,12 @@ jobs:
     - name: format check
       run: make check-format
       working-directory: build
+    - name: cache third party build
+      id: cache-third-party
+      uses: actions/cache@v2
+      with:
+        path: ${{ github.workspace }}/build/third_party
+        key: third-party-build
     - name: build
       run: make -j3
       working-directory: build
