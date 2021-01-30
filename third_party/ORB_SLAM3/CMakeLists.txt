@@ -99,8 +99,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Eigen3::Eigen
     DBoW2
     g2o
-    boost_serialization
-    crypto
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE COMPILEDWITHC11)
