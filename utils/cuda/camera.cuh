@@ -45,8 +45,8 @@ struct CameraIntrinsics {
    *
    * @return homogeneous image plane coordinate
    */
-  __device__ __host__ Eigen::Matrix<T, 3, 1> operator*(const Eigen::Matrix<T, 3, 1>& vec3) const {
-    return Eigen::Matrix<T, 3, 1>(
+  __device__ __host__ Eigen::Vector3<T> operator*(const Eigen::Vector3<T>& vec3) const {
+    return Eigen::Vector3<T>(
         fx * vec3[0] + cx * vec3[2], fy * vec3[1] + cy * vec3[2], vec3[2]);
   }
 };

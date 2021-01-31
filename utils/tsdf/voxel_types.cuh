@@ -45,11 +45,11 @@ class VoxelSEGM {
  */
 class VoxelSpatialTSDF {
  public:
-  Eigen::Matrix<float, 3, 1> position;
+  Eigen::Vector3f position;
   float tsdf;
 
  public:
   __device__ __host__ VoxelSpatialTSDF();
-  __device__ __host__ VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position);
-  __device__ __host__ VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position, float tsdf);
+  __device__ __host__ VoxelSpatialTSDF(const Eigen::Vector3f& position);
+  __device__ __host__ VoxelSpatialTSDF(const Eigen::Vector3f& position, float tsdf);
 };

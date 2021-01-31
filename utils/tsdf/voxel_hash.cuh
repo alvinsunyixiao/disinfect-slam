@@ -31,7 +31,7 @@
  *
  * @return  hashed index
  */
-__device__ __host__ uint Hash(const Eigen::Matrix<short, 3, 1>& block_pos);
+__device__ __host__ uint Hash(const Eigen::Vector3<short>& block_pos);
 
 /**
  * @brief bucket lock state
@@ -69,14 +69,14 @@ class VoxelHashTable {
    *
    * @param block_pos voxel block position
    */
-  __device__ void Allocate(const Eigen::Matrix<short, 3, 1>& block_pos);
+  __device__ void Allocate(const Eigen::Vector3<short>& block_pos);
 
   /**
    * @brief deallocate a block of voxel from the hash table
    *
    * @param block_pos voxel block position
    */
-  __device__ void Delete(const Eigen::Matrix<short, 3, 1>& block_pos);
+  __device__ void Delete(const Eigen::Vector3<short>& block_pos);
 
   /**
    * @brief get tsdf value of a voxel using bilinear interpolation through
@@ -88,7 +88,7 @@ class VoxelHashTable {
    *
    * @return tsdf value of a point
    */
-  __device__ float RetrieveTSDF(const Eigen::Matrix<float, 3, 1>& point, VoxelBlock& cache) const;
+  __device__ float RetrieveTSDF(const Eigen::Vector3f& point, VoxelBlock& cache) const;
 
   /**
    * @brief get voxel data at integer voxel coordinate
@@ -102,7 +102,7 @@ class VoxelHashTable {
    * table)
    */
   template <typename Voxel>
-  __device__ Voxel Retrieve(const Eigen::Matrix<short, 3, 1>& point, VoxelBlock& cache) const {
+  __device__ Voxel Retrieve(const Eigen::Vector3<short>& point, VoxelBlock& cache) const {
     Voxel* voxel = RetrieveMutable<Voxel>(point, cache);
     if (voxel) {
       return *voxel;
@@ -122,8 +122,8 @@ class VoxelHashTable {
    * @return voxel data in Voxel type (nullptr if voxel not found in hash table)
    */
   template <typename Voxel>
-  __device__ Voxel* RetrieveMutable(const Eigen::Matrix<short, 3, 1>& point, VoxelBlock& cache) const {
-    const Eigen::Matrix<short, 3, 1> block_pos = PointToBlock(point);
+  __device__ Voxel* RetrieveMutable(const Eigen::Vector3<short>& point, VoxelBlock& cache) const {
+    const Eigen::Vector3<short> block_pos = PointToBlock(point);
     if (cache.position == block_pos) {
       if (cache.idx >= 0) {
         return &(mem.GetVoxel<Voxel>(point, cache));

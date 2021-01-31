@@ -16,7 +16,7 @@ __global__ static void init_hash_table_kernel(VoxelBlock* voxel_blocks) {
   voxel_blocks[idx].idx = -1;
 }
 
-__device__ __host__ uint Hash(const Eigen::Matrix<short, 3, 1>& block_pos) {
+__device__ __host__ uint Hash(const Eigen::Vector3<short>& block_pos) {
   return (((uint)block_pos[0] * 73856093u) ^ ((uint)block_pos[1] * 19349669u) ^
           ((uint)block_pos[2] * 83492791u)) &
          BUCKET_MASK;
@@ -43,7 +43,7 @@ void VoxelHashTable::ReleaseMemory() {
   mem.ReleaseMemory();
 }
 
-__device__ void VoxelHashTable::Allocate(const Eigen::Matrix<short, 3, 1>& block_pos) {
+__device__ void VoxelHashTable::Allocate(const Eigen::Vector3<short>& block_pos) {
   const unsigned int bucket_idx = Hash(block_pos);
   const unsigned int entry_idx = (bucket_idx << NUM_ENTRY_PER_BUCKET_BITS);
 // check for existence
@@ -107,7 +107,7 @@ __device__ void VoxelHashTable::Allocate(const Eigen::Matrix<short, 3, 1>& block
   }
 }
 
-__device__ void VoxelHashTable::Delete(const Eigen::Matrix<short, 3, 1>& block_pos) {
+__device__ void VoxelHashTable::Delete(const Eigen::Vector3<short>& block_pos) {
   const unsigned int bucket_idx = Hash(block_pos);
   const unsigned int entry_idx = (bucket_idx << NUM_ENTRY_PER_BUCKET_BITS);
 // check for current bucket
@@ -158,19 +158,19 @@ __device__ void VoxelHashTable::Delete(const Eigen::Matrix<short, 3, 1>& block_p
   }
 }
 
-__device__ float VoxelHashTable::RetrieveTSDF(const Eigen::Matrix<float, 3, 1>& point,
+__device__ float VoxelHashTable::RetrieveTSDF(const Eigen::Vector3f& point,
                                               VoxelBlock& cache) const {
-  const Eigen::Matrix<float, 3, 1> pl = point.unaryExpr([] (const float x) { return floorf(x); });
-  const Eigen::Matrix<float, 3, 1> ph = pl + Eigen::Matrix<float, 3, 1>::Ones();
-  const Eigen::Matrix<float, 3, 1> alpha = ph - point;
+  const Eigen::Vector3f pl = point.unaryExpr([] (const float x) { return floorf(x); });
+  const Eigen::Vector3f ph = pl + Eigen::Vector3f::Ones();
+  const Eigen::Vector3f alpha = ph - point;
 
   // compute tsdf of 8 corners
   float tsdf[8];
   #pragma unroll
   for (int i = 0; i < 8; ++i) {
-    const Eigen::Matrix<short, 3, 1> corner((i >> 2) & 1 ? pl[0] : ph[0],
-                                            (i >> 1) & 1 ? pl[1] : ph[1],
-                                            (i >> 0) & 1 ? pl[2] : ph[2]);
+    const Eigen::Vector3<short> corner((i >> 2) & 1 ? pl[0] : ph[0],
+                                       (i >> 1) & 1 ? pl[1] : ph[1],
+                                       (i >> 0) & 1 ? pl[2] : ph[2]);
     tsdf[i] = Retrieve<VoxelTSDF>(corner, cache).tsdf;
   }
 

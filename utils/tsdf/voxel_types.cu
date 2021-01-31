@@ -11,7 +11,7 @@ __device__ __host__ VoxelSEGM::VoxelSEGM() : probability(0.) {}
 __device__ __host__ VoxelSEGM::VoxelSEGM(float probability) : probability(probability) {}
 
 __device__ __host__ VoxelSpatialTSDF::VoxelSpatialTSDF(){};
-__device__ __host__ VoxelSpatialTSDF::VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position)
+__device__ __host__ VoxelSpatialTSDF::VoxelSpatialTSDF(const Eigen::Vector3f& position)
     : VoxelSpatialTSDF(position, 1.) {}
-__device__ __host__ VoxelSpatialTSDF::VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position, float tsdf)
+__device__ __host__ VoxelSpatialTSDF::VoxelSpatialTSDF(const Eigen::Vector3f& position, float tsdf)
     : position(position), tsdf(tsdf) {}

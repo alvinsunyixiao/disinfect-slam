@@ -26,7 +26,7 @@
  *
  * @return block cooridnate in integer grid
  */
-__device__ __host__ inline Eigen::Matrix<short, 3, 1> PointToBlock(const Eigen::Matrix<short, 3, 1>& point) {
+__device__ __host__ inline Eigen::Vector3<short> PointToBlock(const Eigen::Vector3<short>& point) {
   return point.unaryExpr([] (const short x) -> short { return x >> BLOCK_LEN_BITS; });
 }
 
@@ -37,7 +37,7 @@ __device__ __host__ inline Eigen::Matrix<short, 3, 1> PointToBlock(const Eigen::
  *
  * @return voxel cooridnate in integer grid
  */
-__device__ __host__ inline Eigen::Matrix<short, 3, 1> BlockToPoint(const Eigen::Matrix<short, 3, 1>& block_pos) {
+__device__ __host__ inline Eigen::Vector3<short> BlockToPoint(const Eigen::Vector3<short>& block_pos) {
   return block_pos.unaryExpr([] (const short x) -> short { return x << BLOCK_LEN_BITS; });
 }
 
@@ -48,7 +48,7 @@ __device__ __host__ inline Eigen::Matrix<short, 3, 1> BlockToPoint(const Eigen::
  *
  * @return relative voxel index in [0, BLOCK_VOLUME)
  */
-__device__ __host__ inline Eigen::Matrix<short, 3, 1> PointToOffset(const Eigen::Matrix<short, 3, 1>& point) {
+__device__ __host__ inline Eigen::Vector3<short> PointToOffset(const Eigen::Vector3<short>& point) {
   return point.unaryExpr([] (const short x) -> short { return x & (BLOCK_LEN - 1); });
 }
 
@@ -59,7 +59,7 @@ __device__ __host__ inline Eigen::Matrix<short, 3, 1> PointToOffset(const Eigen:
  *
  * @return relative voxel index in [0, BLOCK_VOLUME)
  */
-__device__ __host__ inline unsigned int OffsetToIndex(const Eigen::Matrix<short, 3, 1>& point_offset) {
+__device__ __host__ inline unsigned int OffsetToIndex(const Eigen::Vector3<short>& point_offset) {
   return point_offset[0] + point_offset[1] * BLOCK_LEN + point_offset[2] * BLOCK_AREA;
 }
 
@@ -68,7 +68,7 @@ __device__ __host__ inline unsigned int OffsetToIndex(const Eigen::Matrix<short,
  */
 struct VoxelBlock {
   // block position in integer grid
-  Eigen::Matrix<short, 3, 1> position;
+  Eigen::Vector3<short> position;
   // offset < 0:  block not in hash table (TODO(alvin): CPU streaming is not yet
   // implemented) offset = 0:  normal entry offset > 0:  part of a list
   short offset;
@@ -124,10 +124,10 @@ class VoxelMemPool {
    * @return  voxel data with Voxel type
    */
   template <typename Voxel>
-  __device__ Voxel& GetVoxel(const Eigen::Matrix<short, 3, 1>& point, const VoxelBlock& block) const {
+  __device__ Voxel& GetVoxel(const Eigen::Vector3<short>& point, const VoxelBlock& block) const {
     assert(block.idx >= 0 && block.idx < NUM_BLOCK);
     assert(PointToBlock(point) == block.position);
-    const Eigen::Matrix<short, 3, 1> offset = PointToOffset(point);
+    const Eigen::Vector3<short> offset = PointToOffset(point);
     const unsigned short idx = OffsetToIndex(offset);
     return GetVoxel<Voxel>(idx, block);
   }
