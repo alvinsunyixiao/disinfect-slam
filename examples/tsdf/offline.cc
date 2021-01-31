@@ -111,9 +111,9 @@ class ImageRenderer : public RendererBase {
       follow_cam_ = false;
       const ImVec2 delta = ImGui::GetMouseDragDelta(0);
       const Eigen::Vector2f delta_img(delta.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
-                                     delta.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
+                                      delta.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
       const Eigen::Vector2f pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_rgba_.GetWidth(),
-                                       io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
+                                        io.MousePos.y / io.DisplaySize.y * tsdf_rgba_.GetHeight());
       const Eigen::Vector2f pos_old_img = pos_new_img - delta_img;
       const Eigen::Vector3f pos_new_cam = intrinsics_.Inverse() * pos_new_img.homogeneous();
       const Eigen::Vector3f pos_old_cam = intrinsics_.Inverse() * pos_old_img.homogeneous();

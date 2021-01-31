@@ -160,17 +160,16 @@ __device__ void VoxelHashTable::Delete(const Eigen::Matrix<short, 3, 1>& block_p
 
 __device__ float VoxelHashTable::RetrieveTSDF(const Eigen::Vector3f& point,
                                               VoxelBlock& cache) const {
-  const Eigen::Vector3f pl = point.unaryExpr([] (const float x) { return floorf(x); });
+  const Eigen::Vector3f pl = point.unaryExpr([](const float x) { return floorf(x); });
   const Eigen::Vector3f ph = pl + Eigen::Vector3f::Ones();
   const Eigen::Vector3f alpha = ph - point;
 
   // compute tsdf of 8 corners
   float tsdf[8];
-  #pragma unroll
+#pragma unroll
   for (int i = 0; i < 8; ++i) {
-    const Eigen::Matrix<short, 3, 1> corner((i >> 2) & 1 ? pl[0] : ph[0],
-                                       (i >> 1) & 1 ? pl[1] : ph[1],
-                                       (i >> 0) & 1 ? pl[2] : ph[2]);
+    const Eigen::Matrix<short, 3, 1> corner(
+        (i >> 2) & 1 ? pl[0] : ph[0], (i >> 1) & 1 ? pl[1] : ph[1], (i >> 0) & 1 ? pl[2] : ph[2]);
     tsdf[i] = Retrieve<VoxelTSDF>(corner, cache).tsdf;
   }
 

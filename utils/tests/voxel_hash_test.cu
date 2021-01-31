@@ -1,6 +1,6 @@
-#include <Eigen/Dense>
 #include <gtest/gtest.h>
 
+#include <Eigen/Dense>
 #include <cassert>
 
 #include "utils/cuda/errors.cuh"
@@ -13,7 +13,8 @@ class VoxelHashTest : public ::testing::Test {
   VoxelHashTest() {
     CUDA_SAFE_CALL(cudaMallocManaged(&voxel, sizeof(VoxelRGBW) * MAX_BLOCKS * BLOCK_VOLUME));
     CUDA_SAFE_CALL(cudaMallocManaged(&voxel_block, sizeof(VoxelBlock) * MAX_BLOCKS));
-    CUDA_SAFE_CALL(cudaMallocManaged(&point, sizeof(Eigen::Matrix<short, 3, 1>) * MAX_BLOCKS * BLOCK_VOLUME));
+    CUDA_SAFE_CALL(
+        cudaMallocManaged(&point, sizeof(Eigen::Matrix<short, 3, 1>) * MAX_BLOCKS * BLOCK_VOLUME));
     CUDA_SAFE_CALL(cudaMallocManaged(&block_pos, sizeof(Eigen::Matrix<short, 3, 1>) * MAX_BLOCKS));
   }
 
@@ -37,8 +38,8 @@ __global__ void Allocate(VoxelHashTable hash_table, Eigen::Matrix<short, 3, 1>* 
   hash_table.Allocate(block_pos[idx]);
 }
 
-__global__ void Retrieve(VoxelHashTable hash_table, const Eigen::Matrix<short, 3, 1>* point, VoxelRGBW* voxel,
-                         VoxelBlock* voxel_block) {
+__global__ void Retrieve(VoxelHashTable hash_table, const Eigen::Matrix<short, 3, 1>* point,
+                         VoxelRGBW* voxel, VoxelBlock* voxel_block) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   voxel[idx] = hash_table.Retrieve<VoxelRGBW>(point[idx], voxel_block[idx]);
 }

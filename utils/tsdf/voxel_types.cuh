@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+
 #include <Eigen/Dense>
 
 /**
@@ -13,7 +14,8 @@ class VoxelRGBW {
 
  public:
   __device__ __host__ VoxelRGBW();
-  __device__ __host__ VoxelRGBW(const Eigen::Matrix<unsigned char, 3, 1>& rgb, const unsigned char weight);
+  __device__ __host__ VoxelRGBW(const Eigen::Matrix<unsigned char, 3, 1>& rgb,
+                                const unsigned char weight);
 };
 
 /**

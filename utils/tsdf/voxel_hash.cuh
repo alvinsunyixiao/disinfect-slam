@@ -122,7 +122,8 @@ class VoxelHashTable {
    * @return voxel data in Voxel type (nullptr if voxel not found in hash table)
    */
   template <typename Voxel>
-  __device__ Voxel* RetrieveMutable(const Eigen::Matrix<short, 3, 1>& point, VoxelBlock& cache) const {
+  __device__ Voxel* RetrieveMutable(const Eigen::Matrix<short, 3, 1>& point,
+                                    VoxelBlock& cache) const {
     const Eigen::Matrix<short, 3, 1> block_pos = PointToBlock(point);
     if (cache.position == block_pos) {
       if (cache.idx >= 0) {

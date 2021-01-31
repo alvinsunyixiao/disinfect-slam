@@ -30,9 +30,9 @@ void ImageRenderer::DispatchInput() {
     follow_cam_ = false;
     const ImVec2 delta = ImGui::GetMouseDragDelta(0);
     const Eigen::Vector2f delta_img(delta.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
-                                   delta.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
+                                    delta.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
     const Eigen::Vector2f pos_new_img(io.MousePos.x / io.DisplaySize.x * tsdf_normal_.GetWidth(),
-                                     io.MousePos.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
+                                      io.MousePos.y / io.DisplaySize.y * tsdf_normal_.GetHeight());
     const Eigen::Vector2f pos_old_img = pos_new_img - delta_img;
     const Eigen::Vector3f pos_new_cam = virtual_cam_.intrinsics_inv * pos_new_img.homogeneous();
     const Eigen::Vector3f pos_old_cam = virtual_cam_.intrinsics_inv * pos_old_img.homogeneous();

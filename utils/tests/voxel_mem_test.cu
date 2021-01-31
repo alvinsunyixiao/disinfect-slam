@@ -1,6 +1,6 @@
-#include <Eigen/Dense>
 #include <gtest/gtest.h>
 
+#include <Eigen/Dense>
 #include <ctime>
 
 #include "utils/cuda/errors.cuh"

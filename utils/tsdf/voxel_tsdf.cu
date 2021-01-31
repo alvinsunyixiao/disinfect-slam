@@ -1,6 +1,7 @@
+#include <spdlog/spdlog.h>
+
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
-#include <spdlog/spdlog.h>
 
 #include "utils/cuda/arithmetic.cuh"
 #include "utils/cuda/errors.cuh"
@@ -57,14 +58,13 @@ __device__ static bool is_voxel_visible(const Eigen::Matrix<short, 3, 1>& pos_gr
 
 template <bool Full = true>
 __device__ static bool is_block_visible(const Eigen::Matrix<short, 3, 1>& block_pos,
-                                             const SE3<float>& cam_T_world,
-                                             const CameraParams& cam_params,
-                                             const float& voxel_size) {
+                                        const SE3<float>& cam_T_world,
+                                        const CameraParams& cam_params, const float& voxel_size) {
   const Eigen::Matrix<short, 3, 1> pos_grid = BlockToPoint(block_pos);
   const short x = pos_grid[0], y = pos_grid[1], z = pos_grid[2];
 
   bool visible = true;
-  #pragma unroll
+#pragma unroll
   for (int i = 0; i < 8; ++i) {
     Eigen::Matrix<short, 3, 1> corner(x + (i & 1) * (BLOCK_LEN - 1),
                                       y + ((i >> 1) & 1) * (BLOCK_LEN - 1),
@@ -139,8 +139,8 @@ __global__ static void block_allocate_kernel(VoxelHashTable hash_table, const fl
   Eigen::Vector3f pos_grid = ray_start_grid;
   // allocate blocks along the ray
   for (int i = 0; i <= step_grid; ++i, pos_grid += ray_step_grid) {
-    const Eigen::Matrix<short, 3, 1> pos_block = PointToBlock(
-        pos_grid.unaryExpr([] (const float x) { return roundf(x); }).cast<short>());
+    const Eigen::Matrix<short, 3, 1> pos_block =
+        PointToBlock(pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>());
     if (is_block_visible(pos_block, cam_T_world, cam_params, voxel_size))
       hash_table.Allocate(pos_block);
   }
@@ -190,8 +190,8 @@ __global__ static void tsdf_integrate_kernel(
           (rgb_old * weight_old + rgb_new * weight_new) / weight_combined;
       voxel_tsdf.tsdf = (voxel_tsdf.tsdf * weight_old + tsdf * weight_new) / weight_combined;
       voxel_rgbw.weight = fminf(roundf(weight_combined), 40);
-      voxel_rgbw.rgb = rgb_combined.unaryExpr(
-          [] (const float x) { return roundf(x); }).cast<unsigned char>();
+      voxel_rgbw.rgb =
+          rgb_combined.unaryExpr([](const float x) { return roundf(x); }).cast<unsigned char>();
       // high touch / low touch
       const float positive =
           expf((weight_old * logf(voxel_segm.probability) + weight_new * logf(img_ht[img_idx])) /
@@ -249,12 +249,18 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
   const int max_step = ceil(max_depth / step_size);
   Eigen::Vector3f pos_grid = world_T_cam.GetT() / voxel_size;
   VoxelBlock cache;
-  float tsdf_prev = hash_table.Retrieve<VoxelTSDF>(pos_grid.unaryExpr(
-        [] (const float x) { return roundf(x); }).cast<short>(), cache).tsdf;
+  float tsdf_prev =
+      hash_table
+          .Retrieve<VoxelTSDF>(
+              pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(), cache)
+          .tsdf;
   pos_grid += ray_step_grid;
   for (int i = 1; i < max_step; ++i, pos_grid += ray_step_grid) {
-    const float tsdf_curr = hash_table.Retrieve<VoxelTSDF>(pos_grid.unaryExpr(
-          [] (const float x) { return roundf(x); }).cast<short>(), cache).tsdf;
+    const float tsdf_curr =
+        hash_table
+            .Retrieve<VoxelTSDF>(
+                pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(), cache)
+            .tsdf;
     // ray hit front surface
     if (tsdf_prev > 0 && tsdf_curr <= 0 && tsdf_prev - tsdf_curr <= 1.5) {
       Eigen::Vector3f pos1_grid = pos_grid - ray_step_grid;
@@ -262,8 +268,12 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
       Eigen::Vector3f pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
       // binary search refinement
       while ((pos1_grid - pos2_grid).dot(pos1_grid - pos2_grid) > .1) {
-        const float tsdf_mid = hash_table.Retrieve<VoxelTSDF>(pos_mid_grid.unaryExpr(
-              [] (const float x) { return roundf(x); }).cast<short>(), cache).tsdf;
+        const float tsdf_mid =
+            hash_table
+                .Retrieve<VoxelTSDF>(
+                    pos_mid_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(),
+                    cache)
+                .tsdf;
         if (tsdf_mid < 0) {
           pos2_grid = pos_mid_grid;
         } else {
@@ -271,8 +281,8 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
         }
         pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
       }
-      const Eigen::Matrix<short, 3, 1> final_grid = pos_mid_grid.unaryExpr(
-          [] (const float x) { return roundf(x); }).cast<short>();
+      const Eigen::Matrix<short, 3, 1> final_grid =
+          pos_mid_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>();
       const VoxelRGBW voxel_rgbw = hash_table.Retrieve<VoxelRGBW>(final_grid, cache);
       const VoxelSEGM voxel_segm = hash_table.Retrieve<VoxelSEGM>(final_grid, cache);
       // calculate gradient
@@ -282,20 +292,17 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
       const Eigen::Matrix<short, 3, 1> y_neg(final_grid[0], final_grid[1] - 1, final_grid[2]);
       const Eigen::Matrix<short, 3, 1> z_pos(final_grid[0], final_grid[1], final_grid[2] + 1);
       const Eigen::Matrix<short, 3, 1> z_neg(final_grid[0], final_grid[1], final_grid[2] - 1);
-      const Eigen::Vector3f norm_raw_grid(
-          hash_table.Retrieve<VoxelTSDF>(x_pos, cache).tsdf -
-          hash_table.Retrieve<VoxelTSDF>(x_neg, cache).tsdf,
-          hash_table.Retrieve<VoxelTSDF>(y_pos, cache).tsdf -
-          hash_table.Retrieve<VoxelTSDF>(y_neg, cache).tsdf,
-          hash_table.Retrieve<VoxelTSDF>(z_pos, cache).tsdf -
-          hash_table.Retrieve<VoxelTSDF>(z_neg, cache).tsdf);
-      const float diffusivity =
-          fmaxf(norm_raw_grid.dot(-ray_dir_world) / norm_raw_grid.norm(), 0);
+      const Eigen::Vector3f norm_raw_grid(hash_table.Retrieve<VoxelTSDF>(x_pos, cache).tsdf -
+                                              hash_table.Retrieve<VoxelTSDF>(x_neg, cache).tsdf,
+                                          hash_table.Retrieve<VoxelTSDF>(y_pos, cache).tsdf -
+                                              hash_table.Retrieve<VoxelTSDF>(y_neg, cache).tsdf,
+                                          hash_table.Retrieve<VoxelTSDF>(z_pos, cache).tsdf -
+                                              hash_table.Retrieve<VoxelTSDF>(z_neg, cache).tsdf);
+      const float diffusivity = fmaxf(norm_raw_grid.dot(-ray_dir_world) / norm_raw_grid.norm(), 0);
       const float alpha = fmaxf(voxel_segm.probability - 0.5, 0) / .5;
-      img_tsdf_rgba[idx] = make_uchar4(alpha * 255 + (1 - alpha) * voxel_rgbw.rgb[0],
-                                       (1 - alpha) * voxel_rgbw.rgb[1],
-                                       (1 - alpha) * voxel_rgbw.rgb[2],
-                                       255);
+      img_tsdf_rgba[idx] =
+          make_uchar4(alpha * 255 + (1 - alpha) * voxel_rgbw.rgb[0],
+                      (1 - alpha) * voxel_rgbw.rgb[1], (1 - alpha) * voxel_rgbw.rgb[2], 255);
       img_tsdf_normal[idx] =
           make_uchar4(alpha * 255 + (1 - alpha) * diffusivity * 255,
                       (1 - alpha) * diffusivity * 255, (1 - alpha) * diffusivity * 255, 255);

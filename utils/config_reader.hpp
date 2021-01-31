@@ -25,7 +25,7 @@ inline SE3<float> GetExtrinsicsFromFile(const std::string& config_file_path) {
   YAML::Node config = YAML::LoadFile(config_file_path);
   const auto m = config["Extrinsics"].as<std::vector<double>>();
   const Eigen::Matrix4f tmp =
-    Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(m.data()).cast<float>();
+      Eigen::Map<const Eigen::Matrix<double, 4, 4, Eigen::RowMajor>>(m.data()).cast<float>();
   return SE3<float>(tmp);
 }
 
