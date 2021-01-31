@@ -6,7 +6,7 @@
 template <typename T>
 class SE3 {
  public:
-  __device__ __host__ SE3<T>() = default;
+  __device__ __host__ SE3<T>() {};
 
   __device__ __host__ SE3<T>(const Eigen::Quaternion<T>& rot, const Eigen::Matrix<T, 3, 1>& trans)
       : R_(rot), t_(trans) {}

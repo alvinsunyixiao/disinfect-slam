@@ -31,9 +31,7 @@ class CameraIntrinsics {
   __device__ __host__ CameraIntrinsics<T> Inverse() const {
     const T fx_inv = 1 / fx_;
     const T fy_inv = 1 / fy_;
-    const T cx = cx_;
-    const T cy = cy_;
-    return CameraIntrinsics<T>(fx_inv, fy_inv, -cx * fx_inv, -cy * fy_inv);
+    return CameraIntrinsics<T>(fx_inv, fy_inv, -cx_ * fx_inv, -cy_ * fy_inv);
   }
 
   /**
@@ -44,9 +42,8 @@ class CameraIntrinsics {
    * @return homogeneous image plane coordinate
    */
   __device__ __host__ Eigen::Matrix<T, 3, 1> operator*(const Eigen::Matrix<T, 3, 1>& vec3) const {
-    Eigen::Matrix<T, 3, 1> ret;
-    ret << fx_ * vec3[0] + cx_ * vec3[2], fy_ * vec3[1] + cy_ * vec3[2], vec3[2];
-    return ret;
+    return Eigen::Matrix<T, 3, 1>(
+        fx_ * vec3[0] + cx_ * vec3[2], fy_ * vec3[1] + cy_ * vec3[2], vec3[2]);
   }
 
  private:
