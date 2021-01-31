@@ -19,6 +19,7 @@ find_package(PkgConfig REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 # Slam
+find_package(Eigen3 3.3 REQUIRED)
 find_package(openvslam REQUIRED)
 find_package(Pangolin REQUIRED) # TODO(alvin): to be completely replaced by Dear ImGUI
 find_package(OpenCV REQUIRED)
@@ -82,16 +83,16 @@ list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX .*/.*build.*/.*)
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX .*/third_party/.*)
 
 # create formatting helper targets
-if (CLANG_FORMAT_EXE) 
+if (CLANG_FORMAT_EXE)
     set(RUN_CLANG_FORMAT ${CMAKE_SOURCE_DIR}/run-clang-format.py)
     # format code in place
     add_custom_target(format
         COMMAND python3 ${RUN_CLANG_FORMAT} --clang-format-executable ${CLANG_FORMAT_EXE} -i ${ALL_SOURCE_FILES}
-        DEPENDS ${RUN_CLANG_FORMAT} 
+        DEPENDS ${RUN_CLANG_FORMAT}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     # check for format violations
     add_custom_target(check-format
         COMMAND python3 ${RUN_CLANG_FORMAT} --clang-format-executable ${CLANG_FORMAT_EXE} ${ALL_SOURCE_FILES}
-        DEPENDS ${RUN_CLANG_FORMAT} 
+        DEPENDS ${RUN_CLANG_FORMAT}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif (CLANG_FORMAT_EXE)

@@ -1,20 +1,19 @@
 #pragma once
 
 #include <cuda_runtime.h>
-
-#include "utils/cuda/vector.cuh"
+#include <Eigen/Dense>
 
 /**
  * @brief voxel data packed with RGB and TSDF weight
  */
 class VoxelRGBW {
  public:
-  Vector3<unsigned char> rgb;
+  Eigen::Matrix<unsigned char, 3, 1> rgb;
   unsigned char weight;
 
  public:
   __device__ __host__ VoxelRGBW();
-  __device__ __host__ VoxelRGBW(const Vector3<unsigned char>& rgb, const unsigned char weight);
+  __device__ __host__ VoxelRGBW(const Eigen::Matrix<unsigned char, 3, 1>& rgb, const unsigned char weight);
 };
 
 /**
@@ -46,11 +45,11 @@ class VoxelSEGM {
  */
 class VoxelSpatialTSDF {
  public:
-  Vector3<float> position;
+  Eigen::Matrix<float, 3, 1> position;
   float tsdf;
 
  public:
   __device__ __host__ VoxelSpatialTSDF();
-  __device__ __host__ VoxelSpatialTSDF(const Vector3<float>& position);
-  __device__ __host__ VoxelSpatialTSDF(const Vector3<float>& position, float tsdf);
+  __device__ __host__ VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position);
+  __device__ __host__ VoxelSpatialTSDF(const Eigen::Matrix<float, 3, 1>& position, float tsdf);
 };
