@@ -10,8 +10,12 @@
  * @tparam T  paramter data type
  */
 template <typename T>
-class CameraIntrinsics {
- public:
+struct CameraIntrinsics {
+  const T fx;
+  const T fy;
+  const T cx;
+  const T cy;
+
   /**
    * @brief construct linear calibration from parameter
    *
@@ -21,7 +25,7 @@ class CameraIntrinsics {
    * @param cy  y dimension principle point, in [pixel]
    */
   __device__ __host__ CameraIntrinsics(const T& fx, const T& fy, const T& cx, const T& cy)
-      : fx_(fx), fy_(fy), cx_(cx), cy_(cy) {}
+      : fx(fx), fy(fy), cx(cx), cy(cy) {}
 
   /**
    * @brief optimized calibration matrix inverse
@@ -29,9 +33,9 @@ class CameraIntrinsics {
    * @return inversed linear calibration matrix
    */
   __device__ __host__ CameraIntrinsics<T> Inverse() const {
-    const T fx_inv = 1 / fx_;
-    const T fy_inv = 1 / fy_;
-    return CameraIntrinsics<T>(fx_inv, fy_inv, -cx_ * fx_inv, -cy_ * fy_inv);
+    const T fx_inv = 1 / fx;
+    const T fy_inv = 1 / fy;
+    return CameraIntrinsics<T>(fx_inv, fy_inv, -cx * fx_inv, -cy * fy_inv);
   }
 
   /**
@@ -43,14 +47,8 @@ class CameraIntrinsics {
    */
   __device__ __host__ Eigen::Matrix<T, 3, 1> operator*(const Eigen::Matrix<T, 3, 1>& vec3) const {
     return Eigen::Matrix<T, 3, 1>(
-        fx_ * vec3[0] + cx_ * vec3[2], fy_ * vec3[1] + cy_ * vec3[2], vec3[2]);
+        fx * vec3[0] + cx * vec3[2], fy * vec3[1] + cy * vec3[2], vec3[2]);
   }
-
- private:
-  const T fx_;
-  const T fy_;
-  const T cx_;
-  const T cy_;
 };
 
 class CameraParams {

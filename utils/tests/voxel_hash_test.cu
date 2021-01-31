@@ -101,7 +101,7 @@ TEST_F(VoxelHashTest, Multiple) {
   EXPECT_EQ(voxel_hash_table.NumActiveBlock(), MAX_BLOCKS);
   // assign some voxels
   for (unsigned char i = 0; i < MAX_BLOCKS; ++i) {
-    point[i] = Eigen::Matrix<short, 3, 1>(i * BLOCK_LEN);
+    point[i] = Eigen::Matrix<short, 3, 1>::Constant(i * BLOCK_LEN);
     voxel[i] = {{i, i, i}, i};
   }
   Assignment<<<1, MAX_BLOCKS>>>(voxel_hash_table, point, voxel);
