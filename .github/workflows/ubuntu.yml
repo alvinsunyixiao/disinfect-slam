@@ -47,6 +47,10 @@ jobs:
         sudo apt-get install -y librealsense2-dkms librealsense2-utils librealsense2-dev
         # other
         sudo apt install -y libyaml-cpp-dev libgoogle-glog-dev libgflags-dev clang-format-10
+    - name: add system path
+      run: |
+        echo "/usr/local/cuda-11.0/bin" >> $GITHUB_PATH
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: local dependencies cache
       id: cache-local
       uses: actions/cache@v2
@@ -111,7 +115,7 @@ jobs:
         git clone https://github.com/alvinsunyixiao/openvslam.git ~/openvslam && cd ~/openvslam
         git checkout system_inherit
         mkdir build && cd build
-        cmake \
+        EIGEN3_DIR=$HOME/.local/share/eigen3/cmake cmake \
           -DCMAKE_BUILD_TYPE=Release \
           -DCMAKE_INSTALL_PREFIX=$HOME/.local \
           -DINSTALL_PANGOLIN_VIEWER=ON \
@@ -123,10 +127,6 @@ jobs:
           -DBUILD_TESTS=ON \
           ..
         make -j3 && make install
-    - name: add system path
-      run: |
-        echo "/usr/local/cuda-11.0/bin" >> $GITHUB_PATH
-        echo "$HOME/.local/bin" >> $GITHUB_PATH
     - name: cmake
       run: |
         mkdir build && cd build
