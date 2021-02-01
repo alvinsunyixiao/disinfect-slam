@@ -58,7 +58,7 @@ jobs:
       run: |
         # Eigen3
         git clone https://gitlab.com/libeigen/eigen.git ~/eigen && cd ~/eigen
-        git checkout 3.3.8
+        git checkout 3.3.7
         mkdir build && cd build
         cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$HOME/.local ..
         make install

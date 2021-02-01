@@ -117,8 +117,8 @@ class ImageRenderer : public RendererBase {
       const Eigen::Vector2f pos_old_img = pos_new_img - delta_img;
       const Eigen::Vector3f pos_new_cam = intrinsics_.Inverse() * pos_new_img.homogeneous();
       const Eigen::Vector3f pos_old_cam = intrinsics_.Inverse() * pos_old_img.homogeneous();
-      const Eigen::Vector3f pos_new_norm_cam = pos_new_cam / sqrt(pos_new_cam.dot(pos_new_cam));
-      const Eigen::Vector3f pos_old_norm_cam = pos_old_cam / sqrt(pos_old_cam.dot(pos_old_cam));
+      const Eigen::Vector3f pos_new_norm_cam = pos_new_cam.normalized();
+      const Eigen::Vector3f pos_old_norm_cam = pos_old_cam.normalized();
       const Eigen::Vector3f rot_axis_cross_cam = pos_new_norm_cam.cross(pos_old_norm_cam);
       const float theta = acos(pos_new_norm_cam.dot(pos_old_norm_cam));
       const Eigen::Quaternionf R(Eigen::AngleAxisf(theta, rot_axis_cross_cam.normalized()));
@@ -128,9 +128,9 @@ class ImageRenderer : public RendererBase {
       follow_cam_ = false;
       const ImVec2 delta = ImGui::GetMouseDragDelta(2);
       const Eigen::Vector3f translation(delta.x, delta.y, 0);
-      const Eigen::Vector3f T = virtual_cam_T_world_old_.GetT();
+      const Eigen::Vector3f t = virtual_cam_T_world_old_.GetT();
       const Eigen::Quaternionf R = virtual_cam_T_world_old_.GetR();
-      virtual_cam_T_world_ = SE3<float>(R, T + translation * .01);
+      virtual_cam_T_world_ = SE3<float>(R, t + translation * .01);
     } else {
       virtual_cam_T_world_old_ = virtual_cam_T_world_;
     }

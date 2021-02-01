@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 
-project(disinfslam LANGUAGES CXX C)
-enable_language(CUDA)
+project(disinfslam LANGUAGES CXX C CUDA)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -expt-relaxed-constexpr")
@@ -19,7 +18,7 @@ find_package(PkgConfig REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(OpenGL REQUIRED)
 # Slam
-find_package(Eigen3 3.3 REQUIRED)
+find_package(Eigen3 3.3.7 REQUIRED)
 find_package(openvslam REQUIRED)
 find_package(Pangolin REQUIRED) # TODO(alvin): to be completely replaced by Dear ImGUI
 find_package(OpenCV REQUIRED)

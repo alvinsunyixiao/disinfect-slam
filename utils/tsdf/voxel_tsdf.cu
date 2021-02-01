@@ -51,7 +51,7 @@ __device__ static bool is_voxel_visible(const Eigen::Matrix<short, 3, 1>& pos_gr
   const Eigen::Vector3f pos_world = pos_grid.cast<float>() * voxel_size;
   const Eigen::Vector3f pos_cam = cam_T_world.Apply(pos_world);
   const Eigen::Vector3f pos_img_h = cam_params.intrinsics * pos_cam;
-  const Eigen::Vector3f pos_img = pos_img_h / pos_img_h[2];
+  const Eigen::Vector2f pos_img = pos_img_h.hnormalized();
   return (pos_img[0] >= 0 && pos_img[0] <= cam_params.img_w - 1 && pos_img[1] >= 0 &&
           pos_img[1] <= cam_params.img_h - 1 && pos_img_h[2] >= 0);
 }
@@ -66,7 +66,7 @@ __device__ static bool is_block_visible(const Eigen::Matrix<short, 3, 1>& block_
   bool visible = true;
 #pragma unroll
   for (int i = 0; i < 8; ++i) {
-    Eigen::Matrix<short, 3, 1> corner(x + (i & 1) * (BLOCK_LEN - 1),
+    Eigen::Matrix<short, 3, 1> corner(x + ((i >> 0) & 1) * (BLOCK_LEN - 1),
                                       y + ((i >> 1) & 1) * (BLOCK_LEN - 1),
                                       z + ((i >> 2) & 1) * (BLOCK_LEN - 1));
     if (Full) {
@@ -117,7 +117,7 @@ __global__ static void block_allocate_kernel(VoxelHashTable hash_table, const fl
   // calculate depth2range scale
   const Eigen::Vector3f pos_img_h(x, y, 1.);
   const Eigen::Vector3f pos_cam = cam_params.intrinsics_inv * pos_img_h;
-  img_depth_to_range[idx] = sqrtf(pos_cam.dot(pos_cam));
+  img_depth_to_range[idx] = pos_cam.norm();
   if (depth == 0 || depth > max_depth) {
     return;
   }
@@ -161,7 +161,7 @@ __global__ static void tsdf_integrate_kernel(
   const Eigen::Vector3f pos_world = pos_grid_abs.cast<float>() * voxel_size;
   const Eigen::Vector3f pos_cam = cam_T_world.Apply(pos_world);
   const Eigen::Vector3f pos_img_h = cam_params.intrinsics * pos_cam;
-  const Eigen::Vector3f pos_img = pos_img_h / pos_img_h[2];
+  const Eigen::Vector2f pos_img = pos_img_h.hnormalized();
   const int u = roundf(pos_img[0]);
   const int v = roundf(pos_img[1]);
   // update if visible
@@ -242,25 +242,20 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
   const int idx = y * cam_params.img_w + x;
   const Eigen::Vector3f pos_img_h(x, y, 1);
   const Eigen::Vector3f pos_cam = cam_params.intrinsics_inv * pos_img_h;
-  const Eigen::Vector3f ray_dir_cam = pos_cam / sqrtf(pos_cam.dot(pos_cam));
+  const Eigen::Vector3f ray_dir_cam = pos_cam.normalized();
   const Eigen::Quaternionf world_R_cam = world_T_cam.GetR();
   const Eigen::Vector3f ray_dir_world = world_R_cam * ray_dir_cam;
   const Eigen::Vector3f ray_step_grid = ray_dir_world * step_size / voxel_size;
   const int max_step = ceil(max_depth / step_size);
   Eigen::Vector3f pos_grid = world_T_cam.GetT() / voxel_size;
   VoxelBlock cache;
+  const auto roundf_func = [](const float x) { return roundf(x); };
   float tsdf_prev =
-      hash_table
-          .Retrieve<VoxelTSDF>(
-              pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(), cache)
-          .tsdf;
+      hash_table.Retrieve<VoxelTSDF>(pos_grid.unaryExpr(roundf_func).cast<short>(), cache).tsdf;
   pos_grid += ray_step_grid;
   for (int i = 1; i < max_step; ++i, pos_grid += ray_step_grid) {
     const float tsdf_curr =
-        hash_table
-            .Retrieve<VoxelTSDF>(
-                pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(), cache)
-            .tsdf;
+        hash_table.Retrieve<VoxelTSDF>(pos_grid.unaryExpr(roundf_func).cast<short>(), cache).tsdf;
     // ray hit front surface
     if (tsdf_prev > 0 && tsdf_curr <= 0 && tsdf_prev - tsdf_curr <= 1.5) {
       Eigen::Vector3f pos1_grid = pos_grid - ray_step_grid;
@@ -268,13 +263,9 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
       Eigen::Vector3f pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
       // binary search refinement
       while ((pos1_grid - pos2_grid).dot(pos1_grid - pos2_grid) > .1) {
-        const float tsdf_mid =
-            hash_table
-                .Retrieve<VoxelTSDF>(
-                    pos_mid_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>(),
-                    cache)
-                .tsdf;
-        if (tsdf_mid < 0) {
+        const VoxelTSDF voxel_mid = hash_table.Retrieve<VoxelTSDF>(
+            pos_mid_grid.unaryExpr(roundf_func).cast<short>(), cache);
+        if (voxel_mid.tsdf < 0) {
           pos2_grid = pos_mid_grid;
         } else {
           pos1_grid = pos_mid_grid;
@@ -282,7 +273,7 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
         pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
       }
       const Eigen::Matrix<short, 3, 1> final_grid =
-          pos_mid_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>();
+          pos_mid_grid.unaryExpr(roundf_func).cast<short>();
       const VoxelRGBW voxel_rgbw = hash_table.Retrieve<VoxelRGBW>(final_grid, cache);
       const VoxelSEGM voxel_segm = hash_table.Retrieve<VoxelSEGM>(final_grid, cache);
       // calculate gradient
