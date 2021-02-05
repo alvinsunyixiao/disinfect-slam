@@ -97,8 +97,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     ${OpenCV_LIBS}
     ${Pangolin_LIBRARIES}
     Eigen3::Eigen
-    DBoW2
-    g2o
+    DBoW2_ORB
+    g2o_ORB
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE COMPILEDWITHC11)

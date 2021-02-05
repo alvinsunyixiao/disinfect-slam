@@ -40,15 +40,15 @@ class ImuSyncer {
 
   ImuSyncer(const CallbackFunc& callback);
 
-  void AddMeasurement(const rs2::frame& frame);
+  void AddMeasurement(const rs2::frame& frame) const;
 
  private:
 
-  void TryInvokeSync();
+  void TryInvokeSync() const;
 
   CallbackFunc callback_;
-  std::queue<rs2::motion_frame> accel_q_;
-  std::deque<rs2::motion_frame> gyro_q_;
+  mutable std::queue<rs2::motion_frame> accel_q_;
+  mutable std::deque<rs2::motion_frame> gyro_q_;
 };
 
 /**
@@ -91,18 +91,42 @@ class L515 {
 
 class L515Async {
  public:
-  L515Async();
+  explicit L515Async(bool start = true);
 
   ~L515Async();
 
+  void Start();
+
+  void Stop();
+
   l515_data_t GetSyncedData() const;
+
+  template <rs2_stream StreamType>
+  rs2_intrinsics GetVideoIntrinsics() const {
+    const auto stream = pipe_profile_.get_stream(StreamType);
+    return stream.as<rs2::video_stream_profile>().get_intrinsics();
+  }
+
+  template <rs2_stream StreamType>
+  rs2_motion_device_intrinsic GetMotionIntrincis() const {
+    const auto stream = pipe_profile_.get_stream(StreamType);
+    return stream.as<rs2::motion_stream_profile>().get_motion_intrinsics();
+  }
+
+  template <rs2_stream From, rs2_stream To>
+  rs2_extrinsics GetExtrinsics() const {
+    const auto from_stream = pipe_profile_.get_stream(From);
+    const auto to_stream = pipe_profile_.get_stream(To);
+    return from_stream.get_extrinsics_to(to_stream);
+  }
 
  private:
   void HandleImu(const imu_frame_t& imu_frame) const;
-  void HandleRawStream(const rs2::frame& frame);
+  void HandleRawStream(const rs2::frame& frame) const;
   void TryInvokeSwap() const;
 
   double depth_scale_;
+  bool started_;
   rs2::pipeline pipe_;
   rs2::pipeline_profile pipe_profile_;
   rs2::align align_to_color_;
@@ -111,4 +135,5 @@ class L515Async {
   mutable sensor_frame_t frame_write_;
   mutable std::mutex mtx_read_;
   mutable std::condition_variable cv_read_;
+  mutable std::mutex mtx_start_;
 };

@@ -12,7 +12,9 @@ int main() {
     std::cout << "[Packet @ " << data.timestamp << "]" << std::endl;
     std::cout << "  Image size: " << data.depth_img.size() << std::endl;
     for (const auto& imu_frame: data.imu_frames) {
-      std::cout << "    IMU @ " << imu_frame.timestamp << std::endl;
+      std::cout << "    IMU @ " << imu_frame.timestamp << ' ';
+      std::cout << "Gyro: " << imu_frame.gyro.transpose() << ' ';
+      std::cout << "Accel: " << imu_frame.accel.transpose() << std::endl;
     }
 
     cv::Mat bgr;

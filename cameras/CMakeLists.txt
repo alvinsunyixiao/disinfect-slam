@@ -4,7 +4,8 @@ target_link_libraries(sr300
     PRIVATE openvslam::openvslam)
 
 add_library(l515 l515.cc)
-target_link_libraries(l515 PUBLIC realsense2::realsense2 openvslam::openvslam utils Eigen3::Eigen)
+target_link_libraries(l515
+    PUBLIC realsense2::realsense2 Eigen3::Eigen ${OpenCV_LIBS})
 
 add_library(zed_native zed_native.cc)
 target_link_libraries(zed_native PUBLIC ${OpenCV_LIBS} openvslam::openvslam utils)

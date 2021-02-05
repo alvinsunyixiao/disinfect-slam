@@ -27,8 +27,9 @@ int main() {
 
   pipe.start(cfg, [&](rs2::frame frame) {
     if (rs2::frameset fs = frame.as<rs2::frameset>()) {
+      printf("[SYNC] @ %.2f ms\n", fs.get_timestamp());
       for (const rs2::frame& f: fs) {
-        printf("[SYNC] %s @ %.2f ms @ %d \n", f.get_profile().stream_name().c_str(), fs.get_timestamp(), f.get_frame_timestamp_domain());
+        printf("%s\n", f.get_profile().stream_name().c_str());
       }
     } else {
       syncer.AddMeasurement(frame);
