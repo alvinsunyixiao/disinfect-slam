@@ -13,4 +13,7 @@ target_link_libraries(pseudo_online_capture PRIVATE zed_native l515 slam_module)
 if (${ZED_FOUND})
     add_executable(run_zed run_zed.cc)
     target_link_libraries(run_zed PRIVATE zed slam_module)
+
+    add_executable(run_zed_sdk run_zed_sdk.cc)
+    target_link_libraries(run_zed_sdk PRIVATE zed)
 endif (${ZED_FOUND})

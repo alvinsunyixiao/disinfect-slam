@@ -53,7 +53,6 @@ void reconstruct(const ZEDNative& zed_native, const L515& l515,
       const SE3<float> posecam_P_world = POSE_MANAGER->query_pose(timestamp);
       cv::resize(img_rgb, img_rgb, cv::Size(), .5, .5);
       cv::resize(img_depth, img_depth, cv::Size(), .5, .5);
-      img_depth.convertTo(img_depth, CV_32FC1, 1. / l515.DepthScale());
       TSDF->Integrate(posecam_P_world, img_rgb, img_depth);
     }
   });

@@ -3,14 +3,17 @@
 ZED::ZED() {
   sl::InitParameters init_params;
   init_params.camera_resolution = sl::RESOLUTION::VGA;
-  init_params.camera_fps = 30;
-  init_params.coordinate_units = sl::UNIT::MILLIMETER;
+  init_params.camera_fps = 60;
+  init_params.coordinate_units = sl::UNIT::METER;
   init_params.depth_mode = sl::DEPTH_MODE::QUALITY;
   zed_.open(init_params);
   zed_.setCameraSettings(sl::VIDEO_SETTINGS::EXPOSURE, 100);
   rt_params_ = zed_.getRuntimeParameters();
   rt_params_.confidence_threshold = 50;
   config_ = zed_.getCameraInformation().camera_configuration;
+
+  // start position tracking
+  zed_.enablePositionalTracking();
 }
 
 ZED::~ZED() { zed_.close(); }
@@ -39,6 +42,34 @@ void ZED::GetStereoAndRGBDFrame(cv::Mat* left_img, cv::Mat* right_img, cv::Mat* 
     zed_.retrieveImage(rgb_sl, sl::VIEW::LEFT);
     zed_.retrieveMeasure(depth_sl, sl::MEASURE::DEPTH);
   }
+}
+
+timed_pose_t ZED::GetTimedPose() {
+  timed_pose_t ret;
+
+  if (zed_.grab(rt_params_) == sl::ERROR_CODE::SUCCESS) {
+    sl::Pose pose;
+    zed_.getPosition(pose, sl::REFERENCE_FRAME::WORLD);
+
+    const sl::Orientation R_zed = pose.getOrientation();
+    const sl::Translation t_zed = pose.getTranslation();
+    const Eigen::Quaternionf R(R_zed.ox, R_zed.oy, R_zed.ow, R_zed.oz);
+    const Eigen::Vector3f t(t_zed.tx, t_zed.ty, t_zed.tz);
+
+    ret.world_T_cam = SE3<float>(R, t);
+    ret.timestamp = pose.timestamp.getMilliseconds();
+    ret.confidence = pose.pose_confidence;
+  }
+
+  std::lock_guard<std::mutex> lock(mtx_pose_);
+  world_T_cam_ = ret.world_T_cam;
+
+  return ret;
+}
+
+SE3<float> ZED::GetWorld_T_Cam() const {
+  std::lock_guard<std::mutex> lock(mtx_pose_);
+  return world_T_cam_;
 }
 
 void ZED::AllocateIfNeeded(cv::Mat* img, int type) const {

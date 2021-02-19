@@ -3,6 +3,12 @@
 #include <librealsense2/rs.hpp>
 #include <opencv2/opencv.hpp>
 
+struct timed_rgbd_frame_t {
+  cv::Mat color_img;
+  cv::Mat depth_img;
+  uint64_t timestamp;
+};
+
 /**
  * @brief L515 camer interface with librealsense2
  */
@@ -12,11 +18,6 @@ class L515 {
   ~L515();
 
   /**
-   * @return depth map multiplier
-   */
-  double DepthScale() const;
-
-  /**
    * @brief read an RGBD frame
    *
    * @param color_img rgb image
@@ -24,7 +25,9 @@ class L515 {
    *
    * @return timestamp in system clock
    */
-  int64_t GetRGBDFrame(cv::Mat* color_img, cv::Mat* depth_img) const;
+  uint64_t GetRGBDFrame(cv::Mat* color_img, cv::Mat* depth_img) const;
+
+  timed_rgbd_frame_t GetRGBDFrame() const;
 
   /**
    * @brief set capture properties through librealsense
@@ -43,4 +46,5 @@ class L515 {
   rs2::pipeline pipe_;
   rs2::pipeline_profile pipe_profile_;
   rs2::align align_to_color_;
+  double depth_scale_;
 };

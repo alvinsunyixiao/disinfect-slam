@@ -13,3 +13,8 @@ add_executable(online_no_seg online_no_seg.cc)
 target_link_libraries(online_no_seg
     PRIVATE tsdf_module renderer_module slam_module popl zed_native l515 rotation_math ${OpenCV_LIBS})
 target_include_directories(online_no_seg PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+
+add_executable(online_no_seg_zed_sdk online_no_seg_zed_sdk.cc)
+target_link_libraries(online_no_seg_zed_sdk
+    PRIVATE tsdf_module renderer_module slam_module popl zed l515 rotation_math ${OpenCV_LIBS})
+target_include_directories(online_no_seg_zed_sdk PRIVATE ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})

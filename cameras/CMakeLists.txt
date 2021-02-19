@@ -11,13 +11,11 @@ target_link_libraries(zed_native PUBLIC ${OpenCV_LIBS} openvslam::openvslam util
 
 add_library(zed_sdk INTERFACE)
 target_link_libraries(zed_sdk INTERFACE ${ZED_LIBRARIES})
-target_include_directories(zed_sdk INTERFACE 
+target_include_directories(zed_sdk INTERFACE
     ${ZED_INCLUDE_DIRS} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 target_compile_options(zed_sdk INTERFACE -Wno-deprecated-declarations)
 
 if (${ZED_FOUND})
     add_library(zed zed.cc)
-    target_link_libraries(zed
-        PUBLIC zed_sdk
-        PRIVATE openvslam::openvslam)
+    target_link_libraries(zed PUBLIC zed_sdk rotation_math opencv_core)
 endif (${ZED_FOUND})
