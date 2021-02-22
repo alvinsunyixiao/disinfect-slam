@@ -53,7 +53,7 @@ timed_pose_t ZED::GetTimedPose() {
 
     const sl::Orientation R_zed = pose.getOrientation();
     const sl::Translation t_zed = pose.getTranslation();
-    const Eigen::Quaternionf R(R_zed.ox, R_zed.oy, R_zed.ow, R_zed.oz);
+    const Eigen::Quaternionf R(R_zed.ow, R_zed.ox, R_zed.oy, R_zed.oz);
     const Eigen::Vector3f t(t_zed.tx, t_zed.ty, t_zed.tz);
 
     ret.world_T_cam = SE3<float>(R, t);

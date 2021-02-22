@@ -141,8 +141,9 @@ __global__ static void block_allocate_kernel(VoxelHashTable hash_table, const fl
   for (int i = 0; i <= step_grid; ++i, pos_grid += ray_step_grid) {
     const Eigen::Matrix<short, 3, 1> pos_block =
         PointToBlock(pos_grid.unaryExpr([](const float x) { return roundf(x); }).cast<short>());
-    if (is_block_visible(pos_block, cam_T_world, cam_params, voxel_size))
+    if (is_block_visible(pos_block, cam_T_world, cam_params, voxel_size)) {
       hash_table.Allocate(pos_block);
+    }
   }
 }
 
@@ -323,6 +324,7 @@ TSDFGrid::TSDFGrid(float voxel_size, float truncation)
   // stream init
   CUDA_SAFE_CALL(cudaStreamCreate(&stream_));
   CUDA_SAFE_CALL(cudaStreamCreate(&stream2_));
+  CUDA_SAFE_CALL(cudaDeviceSynchronize());
 }
 
 TSDFGrid::~TSDFGrid() {

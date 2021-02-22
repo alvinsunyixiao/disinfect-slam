@@ -4,6 +4,7 @@
 #include <cinttypes>
 #include <deque>
 #include <functional>
+#include <mutex>
 #include <queue>
 
 static const auto start = std::chrono::steady_clock::now();
@@ -43,11 +44,13 @@ class TimeSyncer {
   TimeSyncer(const CallbackFunc& callback) : callback_(callback) {}
 
   void AddMeasurement1(const SyncType& meas) {
+    std::lock_guard<std::mutex> lock(mtx_q_);
     sync_q_.push(meas);
     TryInvokeSync();
   }
 
   void AddMeasurement2(const AsyncType& meas) {
+    std::lock_guard<std::mutex> lock(mtx_q_);
     async_q_.push_back(meas);
     TryInvokeSync();
   }
@@ -96,4 +99,5 @@ class TimeSyncer {
   CallbackFunc callback_;
   mutable std::queue<SyncType> sync_q_;
   mutable std::deque<AsyncType> async_q_;
+  mutable std::mutex mtx_q_;
 };

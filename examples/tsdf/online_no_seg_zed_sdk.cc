@@ -17,11 +17,10 @@
 
 class ImageRenderer : public RendererBase {
  public:
-  ImageRenderer(const std::string& name, const ZED& zed,
+  ImageRenderer(const std::string& name,
                 const std::shared_ptr<TSDFSystem>& tsdf,
                 const std::string& config_file_path)
       : RendererBase(name),
-        zed_(zed),
         tsdf_(tsdf),
         config_(YAML::LoadFile(config_file_path)),
         virtual_cam_(GetIntrinsicsFromFile(config_file_path), 360, 640) {
@@ -79,14 +78,13 @@ class ImageRenderer : public RendererBase {
       follow_cam_ = true;
     }
     // compute
-    const auto world_T_cam = zed_.GetWorld_T_Cam();
-    cam_T_world_ = world_T_cam.Inverse();
     if (!tsdf_normal_.GetHeight() || !tsdf_normal_.GetWidth()) {
       tsdf_normal_.BindImage(virtual_cam_.img_h, virtual_cam_.img_w, nullptr);
     }
     if (follow_cam_) {
       static float step = 0;
       ImGui::SliderFloat("behind actual camera", &step, 0.0f, 3.0f);
+      std::lock_guard<std::mutex> lock(mtx_pose_);
       virtual_cam_T_world_ =
           SE3<float>(cam_T_world_.GetR(), cam_T_world_.GetT() + Eigen::Vector3f(0, 0, step));
     }
@@ -114,7 +112,7 @@ class ImageRenderer : public RendererBase {
     ImGui::Text("Last queried %lu voxels, took %u ms", last_query_amount, last_query_time);
     // render
     const auto st = GetTimestamp<std::chrono::milliseconds>();
-    //tsdf_->Render(virtual_cam_, virtual_cam_T_world_, &tsdf_normal_);
+    tsdf_->Render(virtual_cam_, virtual_cam_T_world_, &tsdf_normal_);
     CUDA_SAFE_CALL(cudaDeviceSynchronize());
     const auto end = GetTimestamp<std::chrono::milliseconds>();
     ImGui::Text("Rendering takes %lu ms", end - st);
@@ -122,8 +120,12 @@ class ImageRenderer : public RendererBase {
     ImGui::End();
   }
 
+  void SetCam_T_World(const SE3<float>& cam_T_world) {
+    std::lock_guard<std::mutex> lock(mtx_pose_);
+    cam_T_world_ = cam_T_world;
+  }
+
  private:
-  const ZED& zed_;
   bool follow_cam_ = true;
   GLImage8UC4 tsdf_normal_;
   std::shared_ptr<SLAMSystem> slam_;
@@ -133,26 +135,19 @@ class ImageRenderer : public RendererBase {
   SE3<float> virtual_cam_T_world_old_ = SE3<float>::Identity();
   const YAML::Node config_;
   const CameraParams virtual_cam_;
+  std::mutex mtx_pose_;
 };
 
-void reconstruct(ZED* zed, const L515& l515,
-                 const std::string& config_file_path) {
+void reconstruct(const std::string& config_file_path) {
   // initialize TSDF
   auto TSDF = std::make_shared<TSDFSystem>(0.01, 0.06, 4, GetIntrinsicsFromFile(config_file_path),
                                            GetExtrinsicsFromFile(config_file_path));
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
-  ImageRenderer renderer("tsdf", *zed, TSDF, config_file_path);
+  ImageRenderer renderer("tsdf", TSDF, config_file_path);
 
   TimeSyncer<timed_pose_t, timed_rgbd_frame_t> syncer(
       [&] (const timed_pose_t& pose, const timed_rgbd_frame_t& rgbd) {
-    if (pose.confidence > 0 && !rgbd.color_img.empty() && !rgbd.depth_img.empty()) {
-      //std::cout << "Pose @ " << pose.timestamp << " ms" << std::endl;
-      //std::cout << pose.world_T_cam.GetT() << std::endl;
-      //std::cout << "RGBD @ " << rgbd.timestamp << " ms" << std::endl;
-      //std::cout << "  RGB Size: " << rgbd.color_img.size << std::endl;
-      //std::cout << "  Depth Size: " << rgbd.depth_img.size << std::endl << std::endl;
-
+    if (pose.confidence > 0) {
       cv::Mat color_img, depth_img;
       cv::resize(rgbd.color_img, color_img, cv::Size(), .5, .5);
       cv::resize(rgbd.depth_img, depth_img, cv::Size(), .5, .5);
@@ -160,20 +155,19 @@ void reconstruct(ZED* zed, const L515& l515,
     }
   });
 
-  std::mutex mtx_sync;
-
   std::thread t_pose([&]() {
+    ZED zed;
     while (true) {
-      const auto pose = zed->GetTimedPose();
-      std::lock_guard<std::mutex> lock(mtx_sync);
+      const auto pose = zed.GetTimedPose();
+      renderer.SetCam_T_World(pose.world_T_cam.Inverse());
       syncer.AddMeasurement1(pose);
     }
   });
 
   std::thread t_tsdf([&]() {
+    L515 l515;
     while (true) {
       const auto rgbd_frame = l515.GetRGBDFrame();
-      std::lock_guard<std::mutex> lock(mtx_sync);
       syncer.AddMeasurement2(rgbd_frame);
     }
   });
@@ -216,11 +210,7 @@ int main(int argc, char* argv[]) {
   else
     spdlog::set_level(spdlog::level::info);
 
-  // initialize cameras
-  ZED zed;
-  L515 l515;
-  // initialize slam
-  reconstruct(&zed, l515, config_file_path->value());
+  reconstruct(config_file_path->value());
 
   return EXIT_SUCCESS;
 }
