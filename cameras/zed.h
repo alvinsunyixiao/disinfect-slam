@@ -26,7 +26,9 @@ class ZED {
   /**
    * @return camera config including image specs and calibration parameters
    */
-  sl::CameraConfiguration GetConfig() const;
+  sl::CameraConfiguration GetCameraConfig() const;
+
+  sl::SensorsConfiguration GetSensorConfig() const;
 
   /**
    * @brief read both stereo and RGBD frames
@@ -47,7 +49,8 @@ class ZED {
   void AllocateIfNeeded(cv::Mat* img, int type) const;
 
   sl::Camera zed_;
-  sl::CameraConfiguration config_;
+  sl::CameraConfiguration cam_config_;
+  sl::SensorsConfiguration sensor_config_;
   sl::RuntimeParameters rt_params_;
 
   mutable std::mutex mtx_pose_;

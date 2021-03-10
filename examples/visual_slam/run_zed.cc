@@ -94,7 +94,7 @@ std::shared_ptr<openvslam::config> get_config(const std::string& config_file_pat
   YAML::Node yaml_node = YAML::LoadFile(config_file_path);
   // modify configuration based on realsense camera data
   // pre-defined stream profile
-  auto cam_config = camera.GetConfig();
+  auto cam_config = camera.GetCameraConfig();
   yaml_node["Camera.fps"] = cam_config.fps;
   yaml_node["Camera.cols"] = cam_config.resolution.width;
   yaml_node["Camera.rows"] = cam_config.resolution.height;
