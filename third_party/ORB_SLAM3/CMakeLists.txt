@@ -25,7 +25,7 @@ MESSAGE(${OpenCV_VERSION})
 find_package(Eigen3 3.3 REQUIRED)
 find_package(Pangolin REQUIRED)
 
-add_library(${PROJECT_NAME} SHARED
+add_library(${PROJECT_NAME}
 src/System.cc
 src/Tracking.cc
 src/LocalMapping.cc
