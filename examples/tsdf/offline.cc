@@ -87,7 +87,7 @@ class ImageRenderer : public RendererBase {
   ImageRenderer(const std::string& name, const std::string& logdir, const YAML::Node& config)
       : RendererBase(name),
         logdir_(logdir),
-        tsdf_(0.01, 0.06),
+        tsdf_(0.05, 0.3),
         intrinsics_(get_intrinsics(config)),
         log_entries_(parse_log_entries(logdir, config)),
         depth_scale_(config["depthmap_factor"].as<float>()) {
@@ -186,6 +186,13 @@ class ImageRenderer : public RendererBase {
       spdlog::debug("{}", voxel_pos_tsdf.size());
       std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
       fout.write((char*)voxel_pos_tsdf.data(), voxel_pos_tsdf.size() * sizeof(VoxelSpatialTSDF));
+      fout.close();
+    }
+    if (ImGui::Button("Save Mesh")) {
+      const auto triangles = tsdf_.GatherValidMesh();
+      spdlog::debug("{}", triangles.size());
+      std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
+      fout.write((char*)triangles.data(), triangles.size() * sizeof(Trianglef));
       fout.close();
     }
     // render
