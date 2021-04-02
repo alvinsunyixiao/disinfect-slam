@@ -12,12 +12,10 @@
 #include "utils/tsdf/voxel_hash.cuh"
 
 template <typename T>
-struct Triangle {
-  Eigen::Matrix<T, 3, 1> vertices[3];
-};
+using CubeVertices = Eigen::Matrix<T, 3, 1>[3];
 
-typedef Triangle<float> Trianglef;
-typedef Triangle<double> Triangled;
+typedef CubeVertices<float> CubeVerticesf;
+typedef CubeVertices<double> CubeVerticesd;
 
 template <typename T>
 struct BoundingCube {
@@ -97,7 +95,8 @@ class TSDFGrid {
    */
   std::vector<VoxelSpatialTSDF> GatherVoxels(const BoundingCube<float>& volumn);
 
-  std::vector<Trianglef> GatherValidMesh();
+  void GatherValidMesh(std::vector<Eigen::Vector3f>* vertex_buffer,
+                       std::vector<Eigen::Vector3i>* index_buffer);
 
  protected:
   void Allocate(const cv::Mat& img_rgb, const cv::Mat& img_depth, float max_depth,

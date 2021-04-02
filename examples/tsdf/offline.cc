@@ -189,11 +189,17 @@ class ImageRenderer : public RendererBase {
       fout.close();
     }
     if (ImGui::Button("Save Mesh")) {
-      const auto triangles = tsdf_.GatherValidMesh();
-      spdlog::debug("{}", triangles.size());
-      std::ofstream fout("/tmp/data.bin", std::ios::out | std::ios::binary);
-      fout.write((char*)triangles.data(), triangles.size() * sizeof(Trianglef));
-      fout.close();
+      std::vector<Eigen::Vector3f> vertex_buffer;
+      std::vector<Eigen::Vector3i> index_buffer;
+      tsdf_.GatherValidMesh(&vertex_buffer, &index_buffer);
+      std::ofstream vout("/tmp/vertices.bin", std::ios::out | std::ios::binary);
+      std::ofstream iout("/tmp/indices.bin", std::ios::out | std::ios::binary);
+
+      vout.write((char*)vertex_buffer.data(), vertex_buffer.size() * sizeof(Eigen::Vector3f));
+      iout.write((char*)index_buffer.data(), index_buffer.size() * sizeof(Eigen::Vector3i));
+
+      vout.close();
+      iout.close();
     }
     // render
     if (!img_depth_.empty() && !img_rgb_.empty()) {

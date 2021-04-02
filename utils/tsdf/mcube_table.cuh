@@ -1,19 +1,27 @@
 #pragma once
 
+#include "voxel_mem.cuh"
+
 #define MAX_TRIANGLES_PER_CUBE  5
 #define NUM_VERTICES_PER_CUBE   8
 #define NUM_EDGES_PER_CUBE      12
 
+#define BLOCK_VERT_LEN    (BLOCK_LEN + 1)
+#define BLOCK_VERT_AREA   (BLOCK_VERT_LEN * BLOCK_VERT_LEN)
+#define BLOCK_VERT_VOLUME (BLOCK_VERT_AREA * BLOCK_VERT_LEN)
+
 __constant__ int offset_table[NUM_VERTICES_PER_CUBE][3] = {
   {0, 0, 0},
-  {1, 0, 0},
+  {1, 0, 0},  // offset x
   {1, 0, 1},
-  {0, 0, 1},
-  {0, 1, 0},
+  {0, 0, 1},  // offset z
+  {0, 1, 0},  // offset y
   {1, 1, 0},
   {1, 1, 1},
   {0, 1, 1},
 };
+
+__constant__ int offset_dim_indics[3] = { 1, 4, 3 };
 
 __constant__ int edge_table[NUM_EDGES_PER_CUBE][2] = {
  {0, 1},
@@ -28,6 +36,21 @@ __constant__ int edge_table[NUM_EDGES_PER_CUBE][2] = {
  {1, 5},
  {2, 6},
  {3, 7},
+};
+
+__constant__ int edge_vertex_map[NUM_EDGES_PER_CUBE][2] = {
+  {0, 0},
+  {1, 2},
+  {3, 0},
+  {0, 2},
+  {4, 0},
+  {5, 2},
+  {7, 0},
+  {4, 2},
+  {0, 1},
+  {1, 1},
+  {2, 1},
+  {3, 1},
 };
 
 //__constant__ int edge_table[256] = {
