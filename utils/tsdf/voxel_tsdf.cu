@@ -257,24 +257,18 @@ __global__ static void ray_cast_kernel(const VoxelHashTable hash_table,
   for (int i = 1; i < max_step; ++i, pos_grid += ray_step_grid) {
     const float tsdf_curr =
         hash_table.Retrieve<VoxelTSDF>(pos_grid.unaryExpr(roundf_func).cast<short>(), cache).tsdf;
+    const unsigned char weight_curr =
+        hash_table.Retrieve<VoxelRGBW>(pos_grid.unaryExpr(roundf_func).cast<short>(), cache).weight;
+    if (weight_curr < 10) { continue; }
     // ray hit front surface
-    if (tsdf_prev > 0 && tsdf_curr <= 0 && tsdf_prev - tsdf_curr <= 1.5) {
-      Eigen::Vector3f pos1_grid = pos_grid - ray_step_grid;
-      Eigen::Vector3f pos2_grid = pos_grid;
-      Eigen::Vector3f pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
-      // binary search refinement
-      while ((pos1_grid - pos2_grid).dot(pos1_grid - pos2_grid) > .1) {
-        const VoxelTSDF voxel_mid = hash_table.Retrieve<VoxelTSDF>(
-            pos_mid_grid.unaryExpr(roundf_func).cast<short>(), cache);
-        if (voxel_mid.tsdf < 0) {
-          pos2_grid = pos_mid_grid;
-        } else {
-          pos1_grid = pos_mid_grid;
-        }
-        pos_mid_grid = (pos1_grid + pos2_grid) / 2.;
-      }
+    if (tsdf_prev > 0 && tsdf_curr <= 0 && tsdf_prev - tsdf_curr <= 2.0) {
+      const Eigen::Vector3f pos1_grid = pos_grid - ray_step_grid;
+      const Eigen::Vector3f pos2_grid = pos_grid;
+      const Eigen::Vector3f pos_interp_grid =
+        pos_grid + tsdf_curr / (tsdf_prev - tsdf_curr) * ray_step_grid;
       const Eigen::Matrix<short, 3, 1> final_grid =
-          pos_mid_grid.unaryExpr(roundf_func).cast<short>();
+          pos_interp_grid.unaryExpr(roundf_func).cast<short>();
+
       const VoxelRGBW voxel_rgbw = hash_table.Retrieve<VoxelRGBW>(final_grid, cache);
       const VoxelSEGM voxel_segm = hash_table.Retrieve<VoxelSEGM>(final_grid, cache);
       // calculate gradient
@@ -457,7 +451,7 @@ std::vector<VoxelSpatialTSDF> TSDFGrid::GatherVoxels(const BoundingCube<float>& 
 __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
                                             const VoxelBlock* blocks, const float voxel_size,
                                             Eigen::Vector3f* vertices,
-                                            Eigen::Vector3i* vertex_ids,
+                                            Eigen::Vector3i* triangle_ids,
                                             int* vertex_mask,
                                             int* triangle_mask) {
   __shared__ float cube_tsdf[BLOCK_LEN * 2][BLOCK_LEN * 2][BLOCK_LEN * 2];
@@ -487,13 +481,21 @@ __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
         if (cube_blocks[i][j][k].idx >= 0) {
           const VoxelTSDF& tsdf = hash_table.mem.GetVoxel<VoxelTSDF>(
               offset_idx, cube_blocks[i][j][k]);
-          cube_tsdf[i * BLOCK_LEN + threadIdx.z]
-                   [j * BLOCK_LEN + threadIdx.y]
-                   [k * BLOCK_LEN + threadIdx.x] = tsdf.tsdf;
+          const int weight = hash_table.mem.GetVoxel<VoxelRGBW>(
+              offset_idx, cube_blocks[i][j][k]).weight;
+          if (weight > 10) {
+            cube_tsdf[i * BLOCK_LEN + threadIdx.z]
+                     [j * BLOCK_LEN + threadIdx.y]
+                     [k * BLOCK_LEN + threadIdx.x] = tsdf.tsdf;
+          } else {
+            cube_tsdf[i * BLOCK_LEN + threadIdx.z]
+                     [j * BLOCK_LEN + threadIdx.y]
+                     [k * BLOCK_LEN + threadIdx.x] = -10;
+          }
         } else {
           cube_tsdf[i * BLOCK_LEN + threadIdx.z]
                    [j * BLOCK_LEN + threadIdx.y]
-                   [k * BLOCK_LEN + threadIdx.x] = -1;
+                   [k * BLOCK_LEN + threadIdx.x] = -10;
         }
       }
     }
@@ -529,9 +531,9 @@ __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
       for (int j = 0; j < 3; ++j) {
         const int v2_idx = offset_dim_indics[j];
         const Eigen::Map<Eigen::Vector3i> v_offset(offset_table[v2_idx]);
-        const float t2 = cube_tsdf[vertex_offset[2] + offset_table[v2_idx][2]]
-                                  [vertex_offset[1] + offset_table[v2_idx][1]]
-                                  [vertex_offset[0] + offset_table[v2_idx][0]];
+        const float t2 = cube_tsdf[vertex_offset[2] + v_offset[2]]
+                                  [vertex_offset[1] + v_offset[1]]
+                                  [vertex_offset[0] + v_offset[0]];
         vertices[cube_idx * 3 + j] = (v1 + (-t1) / (t2 - t1) * v_offset.cast<float>()) * voxel_size;
         vertex_mask[cube_idx * 3 + j] = 0;
       }
@@ -554,7 +556,7 @@ __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
 
         // check for accidental back faces due to constant initialization
         if (fabsf(local_tsdf[v2_idx] - local_tsdf[v1_idx]) < 1e-3 ||
-            fabsf(local_tsdf[v2_idx] - local_tsdf[v1_idx]) >= 1.5) {
+            fabsf(local_tsdf[v2_idx] - local_tsdf[v1_idx]) >= 2) {
           triangle_mask[triangle_idx] = 0;
           break;
         }
@@ -566,7 +568,7 @@ __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
                                     (offset_table[v_edge_idx][0] + threadIdx.x);
         const int cube_idx = blockIdx.x * BLOCK_VERT_VOLUME + cube_offset_idx;
 
-        vertex_ids[triangle_idx][j] = cube_idx * 3 + v_dim_offset;
+        triangle_ids[triangle_idx][j] = cube_idx * 3 + v_dim_offset;
         vertex_mask[cube_idx * 3 + v_dim_offset] = 1;
       }
 
@@ -576,15 +578,26 @@ __global__ static void marching_cube_kernel(const VoxelHashTable hash_table,
   }
 }
 
-__global__ static void compactify_triangles_kernel(Eigen::Vector3i* tri_outputs,
-                                                   const Eigen::Vector3i* tri_inputs,
-                                                   const int* triangle_mask,
-                                                   const int* triangle_indics,
-                                                   const int length) {
+template<typename T>
+__global__ static void compactify_kernel(T* outputs,
+                                         const T* inputs,
+                                         const int* mask,
+                                         const int* valid_map,
+                                         const int length) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
-  if (idx < length && triangle_mask[idx]) {
-    tri_outputs[triangle_indics[idx] - 1] = tri_inputs[idx];
+  if (idx < length && mask[idx]) {
+    outputs[valid_map[idx] - 1] = inputs[idx];
+  }
+}
+
+__global__ static void transform_triangle_id_kernel(int* triangle_ids,
+                                                    const int* vertex_valid_map,
+                                                    const int num_triangle_ids) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+  if (idx < num_triangle_ids) {
+    triangle_ids[idx] = vertex_valid_map[triangle_ids[idx]] - 1;
   }
 }
 
@@ -598,59 +611,73 @@ void TSDFGrid::GatherValidMesh(std::vector<Eigen::Vector3f>* vertex_buffer,
   const int num_visible_blocks = GatherBlock();
   const int num_vertices = num_visible_blocks * BLOCK_VERT_VOLUME * 3;
   const int num_triangles = num_visible_blocks * BLOCK_VOLUME * MAX_TRIANGLES_PER_CUBE;
-  const int num_aux = ceil((float)num_triangles / (2 * SCAN_BLOCK_SIZE));
-  int num_compat_triangles;
+  int num_valid_triangles, num_valid_vertices;
 
   Eigen::Vector3f* vertices;
-  Eigen::Vector3i* vertex_ids;
-  Eigen::Vector3i* compat_vertex_ids;
+  Eigen::Vector3f* valid_vertices;
+  Eigen::Vector3i* triangle_ids;
+  Eigen::Vector3i* valid_triangle_ids;
   int* vertex_mask;
+  int* vertex_valid_map;
   int* triangle_mask;
-  int* triangle_indics;
-  int* triangle_aux;
+  int* triangle_valid_map;
 
   CUDA_SAFE_CALL(cudaMalloc(&vertices, sizeof(Eigen::Vector3f) * num_vertices));
   CUDA_SAFE_CALL(cudaMalloc(&vertex_mask, sizeof(int) * num_vertices));
-  CUDA_SAFE_CALL(cudaMalloc(&vertex_ids, sizeof(Eigen::Vector3i) * num_triangles));
+  CUDA_SAFE_CALL(cudaMalloc(&vertex_valid_map, sizeof(int) * num_vertices));
+  CUDA_SAFE_CALL(cudaMalloc(&triangle_ids, sizeof(Eigen::Vector3i) * num_triangles));
   CUDA_SAFE_CALL(cudaMalloc(&triangle_mask, sizeof(int) * num_triangles));
-  CUDA_SAFE_CALL(cudaMalloc(&triangle_indics, sizeof(int) * num_triangles));
-  CUDA_SAFE_CALL(cudaMalloc(&triangle_aux, sizeof(int) * num_aux));
+  CUDA_SAFE_CALL(cudaMalloc(&triangle_valid_map, sizeof(int) * num_triangles));
 
   constexpr dim3 DOWNLOAD_THREAD_DIM(BLOCK_LEN, BLOCK_LEN, BLOCK_LEN);
   marching_cube_kernel<<<num_visible_blocks, DOWNLOAD_THREAD_DIM, 0, stream_>>>(
-      hash_table_, visible_blocks_, voxel_size_, vertices, vertex_ids, vertex_mask, triangle_mask);
+      hash_table_, visible_blocks_, voxel_size_, vertices, triangle_ids, vertex_mask,
+      triangle_mask);
 
-  prefix_sum<int>(triangle_mask, triangle_indics, triangle_aux, num_triangles, stream_);
-  CUDA_SAFE_CALL(cudaMemcpyAsync(&num_compat_triangles, triangle_indics + num_triangles - 1,
+  prefix_sum<int>(triangle_mask, triangle_valid_map, nullptr, num_triangles, stream_);
+  CUDA_SAFE_CALL(cudaMemcpyAsync(&num_valid_triangles, triangle_valid_map + num_triangles - 1,
                                  sizeof(int), cudaMemcpyDeviceToHost, stream_));
 
-  CUDA_SAFE_CALL(cudaStreamSynchronize(stream_));
-  spdlog::debug("Gathered {} vertices, {} / {} triangles",
-      num_vertices, num_compat_triangles, num_triangles);
-
-  CUDA_SAFE_CALL(cudaMalloc(&compat_vertex_ids, sizeof(Eigen::Vector3i) * num_compat_triangles));
-  compactify_triangles_kernel<<<ceil((float)num_triangles / 512), 512, 0, stream_>>>(
-    compat_vertex_ids, vertex_ids, triangle_mask, triangle_indics, num_triangles);
-
-  vertex_buffer->reserve(num_vertices);
-  index_buffer->reserve(num_compat_triangles);
-  vertex_buffer->resize(num_vertices);
-  index_buffer->resize(num_compat_triangles);
-
-  CUDA_SAFE_CALL(cudaMemcpyAsync(vertex_buffer->data(), vertices,
-        sizeof(Eigen::Vector3f) * num_vertices, cudaMemcpyDeviceToHost, stream_));
-  CUDA_SAFE_CALL(cudaMemcpyAsync(index_buffer->data(), compat_vertex_ids,
-        sizeof(Eigen::Vector3i) * num_compat_triangles, cudaMemcpyDeviceToHost, stream_));
+  prefix_sum<int>(vertex_mask, vertex_valid_map, nullptr, num_vertices, stream2_);
+  CUDA_SAFE_CALL(cudaMemcpyAsync(&num_valid_vertices, vertex_valid_map + num_vertices - 1,
+                                 sizeof(int), cudaMemcpyDeviceToHost, stream2_));
 
   CUDA_SAFE_CALL(cudaStreamSynchronize(stream_));
+  CUDA_SAFE_CALL(cudaStreamSynchronize(stream2_));
+  spdlog::debug("Gathered {} / {} vertices, {} / {} triangles",
+      num_valid_vertices, num_vertices, num_valid_triangles, num_triangles);
+
+  CUDA_SAFE_CALL(cudaMalloc(&valid_triangle_ids, sizeof(Eigen::Vector3i) * num_valid_triangles));
+  CUDA_SAFE_CALL(cudaMalloc(&valid_vertices, sizeof(Eigen::Vector3f) * num_valid_vertices));
+
+  compactify_kernel<<<ceil((float)num_triangles / 512), 512, 0, stream_>>>(
+    valid_triangle_ids, triangle_ids, triangle_mask, triangle_valid_map, num_triangles);
+  transform_triangle_id_kernel<<<ceil((float)num_valid_triangles * 3 / 512), 512, 0, stream_>>>(
+    (int*)valid_triangle_ids, vertex_valid_map, num_valid_triangles * 3);
+
+  compactify_kernel<<<ceil((float)num_vertices / 512), 512, 0, stream2_>>>(
+    valid_vertices, vertices, vertex_mask, vertex_valid_map, num_vertices);
+
+  vertex_buffer->reserve(num_valid_vertices);
+  index_buffer->reserve(num_valid_triangles);
+  vertex_buffer->resize(num_valid_vertices);
+  index_buffer->resize(num_valid_triangles);
+
+  CUDA_SAFE_CALL(cudaMemcpyAsync(index_buffer->data(), valid_triangle_ids,
+        sizeof(Eigen::Vector3i) * num_valid_triangles, cudaMemcpyDeviceToHost, stream_));
+  CUDA_SAFE_CALL(cudaMemcpyAsync(vertex_buffer->data(), valid_vertices,
+        sizeof(Eigen::Vector3f) * num_valid_vertices, cudaMemcpyDeviceToHost, stream2_));
+
+  CUDA_SAFE_CALL(cudaStreamSynchronize(stream_));
+  CUDA_SAFE_CALL(cudaStreamSynchronize(stream2_));
 
   CUDA_SAFE_CALL(cudaFree(vertices));
-  CUDA_SAFE_CALL(cudaFree(vertex_ids));
+  CUDA_SAFE_CALL(cudaFree(triangle_ids));
   CUDA_SAFE_CALL(cudaFree(vertex_mask));
-  CUDA_SAFE_CALL(cudaFree(compat_vertex_ids));
-  CUDA_SAFE_CALL(cudaFree(triangle_indics));
+  CUDA_SAFE_CALL(cudaFree(vertex_valid_map));
+  CUDA_SAFE_CALL(cudaFree(valid_triangle_ids));
+  CUDA_SAFE_CALL(cudaFree(triangle_valid_map));
   CUDA_SAFE_CALL(cudaFree(triangle_mask));
-  CUDA_SAFE_CALL(cudaFree(triangle_aux));
 }
 
 int TSDFGrid::GatherBlock() {
