@@ -46,6 +46,21 @@ __global__ static void download_tsdf_kernel(const VoxelHashTable hash_table,
   voxel_pos_tsdf[idx] = VoxelSpatialTSDF(pos_world, tsdf.tsdf);
 }
 
+__global__ static void download_semantic_kernel(const VoxelHashTable hash_table,
+                                                const VoxelBlock* blocks, const float voxel_size,
+                                                VoxelSpatialTSDFSEGM* voxel_pos_tsdf) {
+  const VoxelBlock& block = blocks[blockIdx.x];
+  const Eigen::Matrix<short, 3, 1> offset_grid(threadIdx.x, threadIdx.y, threadIdx.z);
+  const Eigen::Matrix<short, 3, 1> pos_grid = BlockToPoint(block.position) + offset_grid;
+  const Eigen::Vector3f pos_world = pos_grid.cast<float>() * voxel_size;
+  const int thread_idx = OffsetToIndex(offset_grid);
+
+  const int idx = blockIdx.x * BLOCK_VOLUME + thread_idx;
+  const VoxelTSDF& tsdf = hash_table.mem.GetVoxel<VoxelTSDF>(thread_idx, block);
+  const VoxelSEGM& segm = hash_table.mem.GetVoxel<VoxelSEGM>(thread_idx, block);
+  voxel_pos_tsdf[idx] = VoxelSpatialTSDFSEGM(pos_world, tsdf.tsdf, segm.probability);
+}
+
 __device__ static bool is_voxel_visible(const Eigen::Matrix<short, 3, 1>& pos_grid,
                                         const SE3<float>& cam_T_world,
                                         const CameraParams& cam_params, const float& voxel_size) {
@@ -346,8 +361,14 @@ void TSDFGrid::Integrate(const cv::Mat& img_rgb, const cv::Mat& img_depth, const
                          const CameraIntrinsics<float>& intrinsics, const SE3<float>& cam_T_world) {
   assert(img_rgb.type() == CV_8UC3);
   assert(img_depth.type() == CV_32FC1);
+  assert(img_ht.type() == CV_32FC1);
+  assert(img_lt.type() == CV_32FC1);
   assert(img_rgb.cols == img_depth.cols);
   assert(img_rgb.rows == img_depth.rows);
+  assert(img_depth.cols == img_ht.cols);
+  assert(img_depth.rows == img_ht.rows);
+  assert(img_depth.cols == img_lt.cols);
+  assert(img_depth.rows == img_lt.rows);
 
   const CameraParams cam_params(intrinsics, img_rgb.rows, img_rgb.cols);
 
@@ -356,9 +377,9 @@ void TSDFGrid::Integrate(const cv::Mat& img_rgb, const cv::Mat& img_depth, const
                                  cudaMemcpyHostToDevice, stream_));
   CUDA_SAFE_CALL(cudaMemcpyAsync(img_depth_, img_depth.data, sizeof(float) * img_depth.total(),
                                  cudaMemcpyHostToDevice, stream_));
-  CUDA_SAFE_CALL(cudaMemcpyAsync(img_ht_, img_ht.data, sizeof(float) * img_depth.total(),
+  CUDA_SAFE_CALL(cudaMemcpyAsync(img_ht_, img_ht.data, sizeof(float) * img_ht.total(),
                                  cudaMemcpyHostToDevice, stream2_));
-  CUDA_SAFE_CALL(cudaMemcpyAsync(img_lt_, img_lt.data, sizeof(float) * img_depth.total(),
+  CUDA_SAFE_CALL(cudaMemcpyAsync(img_lt_, img_lt.data, sizeof(float) * img_lt.total(),
                                  cudaMemcpyHostToDevice, stream2_));
   // compute
   spdlog::debug("[TSDF] pre integrate: {} active blocks", hash_table_.NumActiveBlock());
@@ -415,6 +436,34 @@ std::vector<VoxelSpatialTSDF> TSDFGrid::GatherValid() {
 
   CUDA_SAFE_CALL(cudaMemcpyAsync(ret.data(), voxel_pos_tsdf,
                                  sizeof(VoxelSpatialTSDF) * num_visible_blocks * BLOCK_VOLUME,
+                                 cudaMemcpyDeviceToHost, stream_));
+  CUDA_SAFE_CALL(cudaFree(voxel_pos_tsdf));
+
+  return ret;
+}
+
+std::vector<VoxelSpatialTSDFSEGM> TSDFGrid::GatherValidSemantic() {
+  spdlog::debug("[TSDF] {} active blocks before download", hash_table_.NumActiveBlock());
+
+  constexpr int GATHER_BLOCK_DIM = NUM_ENTRY / BLOCK_VOLUME;
+
+  check_valid_kernel<<<GATHER_BLOCK_DIM, BLOCK_VOLUME, 0, stream_>>>(hash_table_, visible_mask_);
+  CUDA_STREAM_CHECK_ERROR(stream_);
+
+  const int num_visible_blocks = GatherBlock();
+  std::vector<VoxelSpatialTSDFSEGM> ret(num_visible_blocks * BLOCK_VOLUME);
+
+  VoxelSpatialTSDFSEGM* voxel_pos_tsdf;
+  CUDA_SAFE_CALL(cudaMalloc(&voxel_pos_tsdf,
+                            sizeof(VoxelSpatialTSDFSEGM) * num_visible_blocks * BLOCK_VOLUME));
+
+  constexpr dim3 DOWNLOAD_THREAD_DIM(BLOCK_LEN, BLOCK_LEN, BLOCK_LEN);
+  download_semantic_kernel<<<num_visible_blocks, DOWNLOAD_THREAD_DIM, 0, stream_>>>(
+      hash_table_, visible_blocks_, voxel_size_, voxel_pos_tsdf);
+  CUDA_STREAM_CHECK_ERROR(stream_);
+
+  CUDA_SAFE_CALL(cudaMemcpyAsync(ret.data(), voxel_pos_tsdf,
+                                 sizeof(VoxelSpatialTSDFSEGM) * num_visible_blocks * BLOCK_VOLUME,
                                  cudaMemcpyDeviceToHost, stream_));
   CUDA_SAFE_CALL(cudaFree(voxel_pos_tsdf));
 

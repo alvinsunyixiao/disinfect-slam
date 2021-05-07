@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
   auto vocab_file_path = op.add<popl::Value<std::string>>("v", "vocab", "vocabulary file path");
   auto config_file_path = op.add<popl::Value<std::string>>("c", "config", "config file path");
   auto seg_model_path =
-      op.add<popl::Value<std::string>>("m", "model", "PyTorch JIT traced model path");
+      op.add<popl::Value<std::string>>("m", "model", "PyTorch JIT traced model path", "");
   auto debug_mode = op.add<popl::Switch>("", "debug", "debug mode");
   auto device_id = op.add<popl::Value<int>>("", "devid", "camera device id", 0);
 
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
-  if (!vocab_file_path->is_set() || !config_file_path->is_set() || !seg_model_path->is_set()) {
+  if (!vocab_file_path->is_set() || !config_file_path->is_set()) {
     std::cerr << "Invalid Arguments" << std::endl;
     std::cerr << std::endl;
     std::cerr << op << std::endl;

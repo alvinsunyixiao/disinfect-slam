@@ -5,6 +5,8 @@
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 
+#include <Eigen/Dense>
+
 #include "utils/cuda/camera.cuh"
 #include "utils/cuda/lie_group.cuh"
 #include "utils/gl/image.h"
@@ -84,6 +86,13 @@ class TSDFGrid {
    * @return an array of voxels with spatial location and tsdf values
    */
   std::vector<VoxelSpatialTSDF> GatherValid();
+
+  /**
+   * @brief gather all valid semantic voxels
+   *
+   * @return an array of voxels with spatial location and tsdf values
+   */
+  std::vector<VoxelSpatialTSDFSEGM> GatherValidSemantic();
 
   /**
    * @brief gather all voxels within certain bound
