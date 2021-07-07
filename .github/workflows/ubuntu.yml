@@ -51,7 +51,7 @@ jobs:
       run: |
         echo "/usr/local/cuda-11.0/bin" >> $GITHUB_PATH
         echo "$HOME/.local/bin" >> $GITHUB_PATH
-    - name: local dependencies cache
+    - name: cache local dependencies
       id: cache-local
       uses: actions/cache@v2
       with:
@@ -134,6 +134,12 @@ jobs:
     - name: format check
       run: make check-format
       working-directory: build
+    - name: cache third party build
+      id: cache-third-party
+      uses: actions/cache@v2
+      with:
+        path: ${{ github.workspace }}/build/third_party
+        key: third-party-build-v1.0
     - name: build
       run: make -j3
       working-directory: build
